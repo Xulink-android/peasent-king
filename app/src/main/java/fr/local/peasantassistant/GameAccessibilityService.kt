@@ -55,7 +55,13 @@ class GameAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            currentPackage = event.packageName?.toString()
+            val nextPackage = event.packageName?.toString()
+            val wasGame = currentPackage == GAME_PACKAGE
+            currentPackage = nextPackage
+            if (nextPackage == GAME_PACKAGE && !wasGame && panelDismissed) {
+                panelDismissed = false
+                ui.post { showPanel() }
+            }
         }
     }
 
@@ -137,7 +143,7 @@ class GameAccessibilityService : AccessibilityService() {
             }
         }
         val close = Button(this).apply {
-            text = "X Fermer"
+            text = "X Masquer"
             setOnClickListener {
                 panelDismissed = true
                 autoScan = false
@@ -148,7 +154,10 @@ class GameAccessibilityService : AccessibilityService() {
                     try { manager.removeView(view) } catch (_: Exception) { }
                 }
                 this@GameAccessibilityService.overlay = null
-                disableSelf()
+                panelView = null
+                scanStatus = null
+                observationGate.reset()
+                // Hide the panel without revoking the Android authorization.
             }
         }
         val collapse = Button(this).apply {
