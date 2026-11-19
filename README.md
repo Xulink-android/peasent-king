@@ -1,4 +1,4 @@
-# Peasant King Assistant — v1.6 experimental
+# Peasant King Assistant — v1.7 experimental
 
 Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
 
@@ -8,7 +8,9 @@ Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **
 - Suivi OCR facultatif toutes les 5 secondes (uniquement quand le jeu est au premier plan).
 - Interprétation **indicative** des quantités « ENVOYER N » et du contexte de l'écran.
 - Calculateur de transferts régions → port accessible depuis l'écran principal, avec saisie manuelle, contrôle de capacité, arrivages et réserve régionale. Les cargaisons réservées restent comptées dans le stock jusqu'au départ réel.
-- Tests unitaires du parseur et du planificateur exécutés par GitHub Actions avant compilation.
+- Planificateur d'expéditions : contrats, réservations, capacité des navires, stocks partagés et absence de double allocation. Saisie manuelle dans l'application.
+- Contrôle de stabilité OCR sur trois observations identiques avant de considérer un contrat complet comme fiable.
+- Tests unitaires du parseur et des planificateurs exécutés par GitHub Actions avant compilation.
 
 ## Limitations essentielles
 **Aucun chargement, transfert, clic ou envoi automatique n'est activé.**
