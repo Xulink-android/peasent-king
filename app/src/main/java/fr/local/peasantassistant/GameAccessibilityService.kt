@@ -35,6 +35,7 @@ class GameAccessibilityService : AccessibilityService() {
     private val ui = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor()
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    private val observationGate = ObservationGate()
     private var overlay: View? = null
     private var lastReport: String = ""
     private var currentPackage: String? = null
@@ -67,6 +68,7 @@ class GameAccessibilityService : AccessibilityService() {
         }
         overlay = null
         autoScan = false
+        observationGate.reset()
         ui.removeCallbacksAndMessages(null)
         recognizer.close()
         worker.shutdown()
@@ -159,7 +161,10 @@ class GameAccessibilityService : AccessibilityService() {
             text = "Suivi OFF"
             setOnClickListener {
                 autoScan = !autoScan
-                if (!autoScan) ui.removeCallbacks(scanLoop)
+                if (!autoScan) {
+                    ui.removeCallbacks(scanLoop)
+                    observationGate.reset()
+                }
                 text = if (autoScan) "Suivi ON" else "Suivi OFF"
                 status.text = if (autoScan) "Suivi OCR toutes les 5 secondes." else "Suivi arrêté."
                 if (autoScan) ui.post(scanLoop)
@@ -290,6 +295,7 @@ class GameAccessibilityService : AccessibilityService() {
                                 )
                             }
                         )
+                        val verdict = observationGate.observe(parsed)
                         lastReport = buildString {
                             appendLine("Peasant King — diagnostic OCR en lecture seule")
                             appendLine("Écran : $width x $height")
@@ -297,12 +303,13 @@ class GameAccessibilityService : AccessibilityService() {
                             lines.forEach { appendLine(it) }
                             appendLine("SIMULATION / INTERPRÉTATION")
                             appendLine(parsed.context)
+                            appendLine("VÉRIFICATION : " + verdict.message)
                             parsed.contracts.forEach { contract ->
                                 appendLine("Contrat : royaume=" + (contract.kingdom ?: "inconnu") +
                                     ", quantité=" + contract.amount + ", ressource=" + (contract.resource ?: "inconnue"))
                             }
                             parsed.warnings.forEach { appendLine("Attention : " + it) }
-                            appendLine("Aucune action envoyée au jeu.")
+                            appendLine("Actions autorisées : aucune (diagnostic uniquement).")
                             appendLine("La lecture des icônes et des contrats invisibles n'est pas prise en charge.")
                         }
                         ui.post {
