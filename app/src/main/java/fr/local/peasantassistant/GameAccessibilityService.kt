@@ -330,7 +330,7 @@ class GameAccessibilityService : AccessibilityService() {
                             matches.mapIndexed { index, line ->
                                 val rect = line.boundingBox
                                 if (rect == null) false else {
-                                    val crop = IconSamples.cropLeftOfText(bitmap, rect)
+                                    val crop = IconSamples.cropRightOfText(bitmap, rect)
                                     if (crop == null) false else {
                                         val saved = IconSamples.saveCandidate(
                                             java.io.File(filesDir, "icon_candidates"), crop, index
