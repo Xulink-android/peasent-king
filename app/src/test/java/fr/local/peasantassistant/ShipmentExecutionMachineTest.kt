@@ -80,8 +80,10 @@ class ShipmentExecutionMachineTest {
         val pending = machine.observe(port(), 2600)
         assertNull(pending.next)
         assertEquals(ShipmentExecutionMachine.State.VERIFYING_RESULT, pending.state)
-        assertEquals(ShipmentExecutionMachine.State.COMPLETED,
+        assertEquals(ShipmentExecutionMachine.State.VERIFYING_RESULT,
             machine.observe(port().copy(sendCompleted = true), 2700).state)
-        assertNull(machine.observe(port().copy(sendCompleted = true), 2800).next)
+        assertEquals(ShipmentExecutionMachine.State.COMPLETED,
+            machine.observe(port().copy(sendCompleted = true), 2800).state)
+        assertNull(machine.observe(port().copy(sendCompleted = true), 2900).next)
     }
 }
