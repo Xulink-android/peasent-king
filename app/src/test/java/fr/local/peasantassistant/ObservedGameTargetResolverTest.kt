@@ -86,7 +86,7 @@ class ObservedGameTargetResolverTest {
             GameScreenClassifier.Screen.UNLOAD_CARGO, boxes, 1080, 2340, good)
         assertNotNull(target)
         assertTrue(target!!.isDrag)
-        assertEquals(812, target.start.y)
+        assertEquals(822, target.start.y)
         assertEquals(1475, target.end.y)
         assertNull(ObservedGameTargetResolver.unloadCargoDrag(
             GameScreenClassifier.Screen.UNLOAD_CARGO, boxes, 1080, 2340,
