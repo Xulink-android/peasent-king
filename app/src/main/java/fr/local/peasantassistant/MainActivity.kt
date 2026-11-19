@@ -4,7 +4,9 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
+import android.text.InputType
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -17,31 +19,65 @@ class MainActivity : Activity() {
             val d = (resources.displayMetrics.density * 18).toInt()
             setPadding(d, d, d, d)
         }
-        val info = TextView(this).apply {
-            text = """
-                Peasant King Assistant — diagnostic 1.4
-
-                Cette version ne joue pas à ta place.
-                Elle lit uniquement les textes visibles dans Peasant to King pour préparer la reconnaissance des contrats et des stocks.
-
-                1. Active le service d'accessibilité ci-dessous.
-                2. Ouvre le jeu.
-                3. Touche « Analyser » dans le panneau flottant.
-                4. Touche « Copier rapport » pour partager le texte OCR.
-
-                Aucune sauvegarde n'est lue et aucun geste n'est envoyé au jeu.
-                Désactive le service après les tests.
-            """.trimIndent()
+        fun label(value: String) = TextView(this).apply {
+            text = value
             textSize = 16f
+            setPadding(0, 12, 0, 4)
         }
-        val button = Button(this).apply {
-            text = "Ouvrir les paramètres d'accessibilité"
-            setOnClickListener {
-                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        root.addView(label("Peasant King Assistant — v1.6 (simulation)"))
+        root.addView(label(
+            "Lecture OCR locale et simulation des contrats. " +
+            "Aucun clic ni transfert automatique n'est effectué. " +
+            "Le bouton Fermer du panneau désactive le service."
+        ))
+        root.addView(Button(this).apply {
+            text = "Activer / désactiver le service d'accessibilité"
+            setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        })
+        root.addView(label("Calculateur de réapprovisionnement — valeurs à saisir depuis le jeu"))
+        val resource = EditText(this).apply { hint = "Ressource (ex. blé)" }
+        root.addView(resource)
+        fun number(hintText: String, defaultValue: String = "0"): EditText {
+            val input = EditText(this).apply {
+                hint = hintText
+                setText(defaultValue)
+                inputType = InputType.TYPE_CLASS_NUMBER
+                contentDescription = hintText
             }
+            root.addView(label(hintText))
+            root.addView(input)
+            return input
         }
-        root.addView(info)
-        root.addView(button)
+        val capacity = number("Capacité totale du port", "200")
+        val inPort = number("Stock actuellement dans le port", "0")
+        val inbound = number("Marchandises déjà en route", "0")
+        val inRegion = number("Stock disponible dans la région", "0")
+        val reserve = number("Réserve minimale à garder dans la région", "0")
+        val planned = number("Stock réservé pour un navire non encore parti", "0")
+        val result = label("Résultat : aucune simulation exécutée")
+        root.addView(Button(this).apply {
+            text = "Calculer sans agir sur le jeu"
+            setOnClickListener {
+                val values = listOf(capacity, inPort, inbound, inRegion, reserve, planned)
+                    .map { it.text.toString().toIntOrNull() }
+                if (values.any { it == null } || resource.text.isBlank()) {
+                    result.text = "Saisis une ressource et six nombres entiers valides."
+                    return@setOnClickListener
+                }
+                val v = values.map { it!! }
+                val decision = StockPlanner.plan(StockPlanner.Stock(
+                    resource.text.toString(), v[0], v[1], v[2], v[3], v[4], v[5]
+                ))
+                result.text = "Transfert proposé : ${decision.transfer} unités de ${decision.resource}. " +
+                    decision.reason + ". Aucun transfert exécuté."
+            }
+        })
+        root.addView(result)
+        root.addView(label(
+            "Important : le planificateur ne connaît pas encore les stocks du jeu. " +
+            "Il utilise exclusivement les chiffres saisis. Les marchandises réservées " +
+            "pour un navire occupent toujours de la place jusqu'à son départ réel."
+        ))
         setContentView(ScrollView(this).apply { addView(root) })
     }
 }
