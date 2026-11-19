@@ -1,18 +1,27 @@
-# Peasant King Assistant
+# Peasant King Assistant — v1.5 experimental
 
-Application Android expérimentale permettant de **diagnostiquer les écrans** de Peasant to King 0.1.46 afin de préparer une automatisation des contrats et du réapprovisionnement des ports.
+Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
 
-## Statut
-- Prototype en **lecture seule** : capture d'écran via service d'accessibilité Android et reconnaissance locale de texte (ML Kit).
-- Aucune lecture directe de la sauvegarde du jeu.
-- Aucune automatisation des contrats ou transferts activée.
-- L'application n'intègre ni APK original ni ressources du jeu.
+## Fonctionnalités
+- Capture d'écran manuelle via service d'accessibilité Android et OCR ML Kit local.
+- Panneau flottant avec **Analyser**, **Copier rapport**, **Suivi ON/OFF**, **Réduire**, **X Fermer** et déplacement par glissement sur le fond.
+- Suivi OCR facultatif toutes les 5 secondes (uniquement quand le jeu est au premier plan).
+- Interprétation **indicative** des quantités « ENVOYER N » et du contexte de l'écran.
+- Planificateur Kotlin de transferts régions → port, avec contrôle de capacité, arrivages, réserve régionale et chargement prévu.
+- Tests unitaires du parseur et du planificateur exécutés par GitHub Actions avant compilation.
 
-## Construire l'APK
-Ouvrir **Actions → Build Android APK** et, lorsqu'une exécution est réussie, récupérer l'artefact `PeasantKingAssistant-debug-apk`. Il contient un APK *debug* pour essais, et **non** un bot fini.
+## Limitations essentielles
+**Aucun chargement, transfert, clic ou envoi automatique n'est activé.**
+Les contrats affichent des **icônes** de marchandises : l'OCR seul ne permet pas d'en déduire la ressource. L'application refuse de deviner une ressource ou un stock. Le planificateur n'est pas encore alimenté par les valeurs réelles du jeu. L'analyse des contrats est une simulation/diagnostic et non un bot complet.
 
-## Utilisation
-Installer l'APK, activer manuellement le service d'accessibilité de l'application, ouvrir Peasant to King, puis toucher le panneau flottant **Analyser**. Le bouton **Copier rapport** copie uniquement les textes OCR et leurs positions approximatives. Vérifier soigneusement les chiffres avant toute action.
+## APK
+Dans **Actions → Build Android APK → dernier build vert → Artifacts**, télécharger `PeasantKingAssistant-debug-apk`, décompresser puis installer `app-debug.apk`.
 
 ## Sécurité
-L'autorisation d'accessibilité est sensible. Le code doit être audité avant installation, la permission doit être coupée après les tests et les rapports OCR ne doivent pas être publiés dans ce dépôt public.
+Le service d'accessibilité est une permission sensible. L'application n'envoie pas de gestes et ne transmet pas de rapport sur un serveur. Le bouton **X Fermer** appelle `disableSelf()` pour couper le service. En cas de problème : Paramètres Android → Accessibilité → Applications installées → Peasant King Assistant → Désactiver.
+
+## Étapes restantes pour un bot autonome
+1. Identifier de manière vérifiable les icônes des marchandises et les écrans de stocks/entrepôts.
+2. Associer les stocks réels et les arrivages à des ressources et des ports.
+3. Mettre en place un moteur d'actions avec vérification après chaque transition et arrêt immédiat.
+4. Tester sur appareil réel, puis activer l'automatisation uniquement lorsque la reconnaissance est fiable.
