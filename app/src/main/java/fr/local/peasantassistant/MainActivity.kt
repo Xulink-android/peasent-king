@@ -32,11 +32,11 @@ class MainActivity : Activity() {
             textSize = 16f
             setPadding(0, 12, 0, 4)
         }
-        root.addView(label("Peasant King Assistant — v2.13 bêta"))
+        root.addView(label("Peasant King Assistant — v2.17 bêta"))
         root.addView(label(
             "Lecture OCR locale et simulation des contrats. " +
             "Un geste facultatif Auto Port (1 fois) est disponible après activation et vérifications. " +
-            "Le moteur d’expédition en plusieurs étapes est en préparation, mais non activé. Aucune expédition ni aucun transfert de ressources ne sont automatisés. " +
+            "Le moteur de cycle et le pont de gestes sont encore en validation, non raccordés au suivi direct. La grille d'icônes du port ne permet pas encore de confirmer les stocks et réservations. Aucune expédition ni aucun transfert de ressources ne sont automatisés. " +
             "Le bouton Masquer ferme seulement le panneau, sans révoquer l'autorisation Android."
         ))
         root.addView(Button(this).apply {
