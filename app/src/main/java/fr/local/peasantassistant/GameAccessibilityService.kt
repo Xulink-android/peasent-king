@@ -367,6 +367,9 @@ class GameAccessibilityService : AccessibilityService() {
                                     crop.recycle()
                                 }
                             }
+                        val stockObservation = StockScreenParser.parse(
+                            detected.textBlocks.flatMap { it.lines }.map { it.text.trim() }
+                        )
                         val verdict = observationGate.observe(parsed)
                         val decision = automationCoordinator.evaluate(
                             AutomationCoordinator.Snapshot(
@@ -386,6 +389,12 @@ class GameAccessibilityService : AccessibilityService() {
                                 appendLine("ICÔNE CANDIDATE : $contract -> $label (diagnostic non validé)")
                             }
                             appendLine("AUTOMATISATION : " + decision.phase + " — " + decision.explanation)
+                            appendLine("LECTURE PORT (expérimentale, sans action) :")
+                            stockObservation.supplies.forEach {
+                                appendLine("Stock: ${it.resource} = ${it.availableAtPort}, réservé = ${it.reserved}")
+                            }
+                            appendLine("Capacité : ${stockObservation.shipCapacity ?: "inconnue"} ; navires : ${stockObservation.availableShips ?: "inconnus"}")
+                            stockObservation.warnings.forEach { appendLine("Port : " + it) }
                             if (shouldCollect) appendLine("Candidats icônes enregistrés localement : $savedIcons")
                             if (shouldCollect) appendLine("Images non étiquetées : identification non garantie.")
                             parsed.contracts.forEach { contract ->
