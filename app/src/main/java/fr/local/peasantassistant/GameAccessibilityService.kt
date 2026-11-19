@@ -261,16 +261,34 @@ class GameAccessibilityService : AccessibilityService() {
                                 val y = (100.0 * rect.exactCenterY() / height).toInt()
                                 "$x%,$y% : $text"
                             }
+                        val parsed = ContractParser.parse(
+                            detected.textBlocks.flatMap { it.lines }.mapNotNull { line ->
+                                val rect = line.boundingBox ?: return@mapNotNull null
+                                ContractParser.Line(
+                                    line.text.trim(),
+                                    (100.0 * rect.exactCenterX() / width).toInt(),
+                                    (100.0 * rect.exactCenterY() / height).toInt()
+                                )
+                            }
+                        )
                         lastReport = buildString {
                             appendLine("Peasant King — diagnostic OCR en lecture seule")
                             appendLine("Écran : $width x $height")
                             appendLine("Textes détectés : ${lines.size}")
                             lines.forEach { appendLine(it) }
+                            appendLine("SIMULATION / INTERPRÉTATION")
+                            appendLine(parsed.context)
+                            parsed.contracts.forEach { contract ->
+                                appendLine("Contrat : royaume=" + (contract.kingdom ?: "inconnu") +
+                                    ", quantité=" + contract.amount + ", ressource=" + (contract.resource ?: "inconnue"))
+                            }
+                            parsed.warnings.forEach { appendLine("Attention : " + it) }
+                            appendLine("Aucune action envoyée au jeu.")
                             appendLine("La lecture des icônes et des contrats invisibles n'est pas prise en charge.")
                         }
                         ui.post {
                             capturing = false
-                            finish("Analyse : ${lines.size} textes détectés. Appuie sur Copier rapport.")
+                            finish("Analyse : ${lines.size} textes, ${parsed.contracts.size} contrats probables. Copier rapport.")
                         }
                     }
                     .addOnFailureListener { error ->
