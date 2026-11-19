@@ -66,3 +66,8 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 - Un résolveur de cibles utilise les rectangles OCR du jeu pour viser le bouton de destination et le paiement, et pour proposer un glissement depuis une ligne de stock reconnue vers la zone de chargement observée. Les propositions sont rejetées si la ressource, la quantité, la destination, le stock ou la capacité ne concordent pas.
 - Un adaptateur Android commun vérifie l'accord utilisateur, le premier plan, la fraîcheur de la capture et les deux extrémités d'un glissement. La navigation Port existante passe maintenant par cet adaptateur.
 - Le résolveur de chargement/destination/paiement est testé en isolation mais n'est pas encore orchestré par `ShipmentExecutionMachine`. Aucune expédition complète n'est activée dans cette version ; il faut encore raccorder le cycle d'états, la lecture réelle des stocks par icônes, l'arrêt Démarrer/Arrêter et valider le tout sur le Galaxy.
+
+## v2.16 — machine de cycle complet
+
+- Une machine déterministe couvre désormais le contrat, le chargement, l'envoi, la vérification du départ, l'arrivée, le déchargement et la collecte du paiement. Elle bloque les stocks insuffisants, les observations ambiguës, les gestes échoués et ne retente jamais un départ ou une collecte non confirmés.
+- La machine et le résolveur de gestes sont encore des composants testés séparément : ils ne sont pas encore orchestrés ensemble par le service d'accessibilité. L'APK ne réalise donc pas encore le cycle automatiquement.
