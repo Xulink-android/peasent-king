@@ -31,7 +31,9 @@ class ShipmentCycleMachine {
     private var userEnabled = false
     private var pending: Action? = null
     private var pendingLoadBaseline: Int? = null
+    private var pendingStockBaseline: Int? = null
     private var loadBaseline: Int? = null
+    private var loadStockBaseline: Int? = null
     private var actionAtMs = 0L
     private var previousFingerprint: String? = null
     private var stableCount = 0
@@ -39,7 +41,8 @@ class ShipmentCycleMachine {
 
     fun stop() {
         shipment = null; state = State.STOPPED; userEnabled = false; pending = null
-        pendingLoadBaseline = null; loadBaseline = null
+        pendingLoadBaseline = null; pendingStockBaseline = null
+        loadBaseline = null; loadStockBaseline = null
         previousFingerprint = null; stableCount = 0
     }
 
@@ -87,6 +90,7 @@ class ShipmentCycleMachine {
                     value.shipCapacity == null || value.shipCapacity < plan.quantity)
                     return block("Chargement refusé : données ou stock incohérents")
                 pendingLoadBaseline = loaded
+                pendingStockBaseline = value.stockAvailable
                 Action.LOAD_CARGO
             }
             State.WAITING_FOR_READY -> {
@@ -97,10 +101,13 @@ class ShipmentCycleMachine {
             }
             State.VERIFYING_LOAD -> {
                 val baseline = loadBaseline ?: return block("Base de chargement absente")
+                val stockBaseline = loadStockBaseline ?: return block("Stock de départ absent")
                 val loaded = value.loadedQuantity
+                val stock = value.stockAvailable
                 if (value.screen != Screen.SHIP_LOADING || !cargoMatches() || loaded == null ||
-                    loaded <= baseline || loaded > plan.quantity)
-                    return block("Aucune progression de chargement confirmée ; aucun nouvel essai")
+                    loaded <= baseline || loaded > plan.quantity || stock == null ||
+                    stock != stockBaseline - (loaded - baseline))
+                    return block("Progression de cargaison ou baisse du stock non confirmée ; aucun nouvel essai")
                 state = if (loaded == plan.quantity) State.WAITING_FOR_READY else State.WAITING_FOR_LOAD
                 clearStability()
                 return Decision(state, reason = if (loaded == plan.quantity)
@@ -154,7 +161,9 @@ class ShipmentCycleMachine {
             Action.OPEN_PORT -> State.WAITING_FOR_LOAD
             Action.LOAD_CARGO -> {
                 loadBaseline = pendingLoadBaseline
+                loadStockBaseline = pendingStockBaseline
                 pendingLoadBaseline = null
+                pendingStockBaseline = null
                 State.VERIFYING_LOAD
             }
             Action.SEND_SHIP -> State.VERIFYING_DEPARTURE

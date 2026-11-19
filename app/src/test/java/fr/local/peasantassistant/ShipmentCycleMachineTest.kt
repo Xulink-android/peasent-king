@@ -18,7 +18,9 @@ class ShipmentCycleMachineTest {
     )
 
     private fun loadPart(machine: ShipmentCycleMachine, loaded: Int, start: Long): ShipmentCycleMachine.Decision =
-        stable(machine, base(ShipmentCycleMachine.Screen.SHIP_LOADING).copy(loadedQuantity = loaded), start)
+        stable(machine, base(ShipmentCycleMachine.Screen.SHIP_LOADING).copy(
+            loadedQuantity = loaded, stockAvailable = 111 - loaded
+        ), start)
 
     @Test fun fullCycleRequiresAcknowledgementAndFreshEvidenceAtEveryPhase() {
         val machine = ShipmentCycleMachine()

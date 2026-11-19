@@ -61,6 +61,24 @@ class ObservedGameTargetResolverTest {
             good.copy(observedResource = "coal")))
     }
 
+    @Test fun partialLoadRequiresOnlyRemainingStockAndRejectsMismatchedCounts() {
+        val boxes = listOf(
+            ObservedGameTargetResolver.Box("Maintiens la cargaison, glisse-la à bord et relâche", 80, 900, 980, 990),
+            ObservedGameTargetResolver.Box("ENTREPÔT", 430, 1390, 650, 1430)
+        )
+        val remainingStock = ObservedGameTargetResolver.Box("63/200", 365, 1690, 520, 1735)
+        val afterPartial = good.copy(confirmedAvailable = 63, loadedQuantity = 48)
+        assertNotNull(ObservedGameTargetResolver.loadCargoDrag(
+            GameScreenClassifier.Screen.SHIP_LOADING, boxes, 1080, 2340,
+            remainingStock, 63, afterPartial))
+        assertNull(ObservedGameTargetResolver.loadCargoDrag(
+            GameScreenClassifier.Screen.SHIP_LOADING, boxes, 1080, 2340,
+            remainingStock, 40, afterPartial))
+        assertNull(ObservedGameTargetResolver.loadCargoDrag(
+            GameScreenClassifier.Screen.SHIP_LOADING, boxes, 1080, 2340,
+            remainingStock, 63, afterPartial.copy(loadedQuantity = 89)))
+    }
+
     @Test fun paymentRequiresExpectedKingdomAmountAndUniqueButton() {
         val boxes = listOf(
             ObservedGameTargetResolver.Box("Highvale Star à Eastmere", 300, 600, 780, 650),

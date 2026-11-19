@@ -20,7 +20,8 @@ object ObservedGameTargetResolver {
         val shipCapacity: Int?,
         val observedResource: String?,
         val unambiguous: Boolean,
-        val expectedReward: Int? = null
+        val expectedReward: Int? = null,
+        val loadedQuantity: Int? = 0
     )
 
     private fun norm(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
@@ -53,9 +54,12 @@ object ObservedGameTargetResolver {
         available: Int?,
         evidence: ShipmentEvidence
     ): Gesture? {
+        val loaded = evidence.loadedQuantity ?: return null
+        val remaining = evidence.quantity - loaded
         if (screen != GameScreenClassifier.Screen.SHIP_LOADING || !validPlan(evidence) ||
-            evidence.observedResource != evidence.resource || available == null || available < evidence.quantity ||
-            evidence.confirmedAvailable == null || evidence.confirmedAvailable < evidence.quantity ||
+            loaded !in 0 until evidence.quantity || evidence.observedResource != evidence.resource ||
+            available == null || available != evidence.confirmedAvailable || available < remaining ||
+            evidence.confirmedAvailable == null || evidence.confirmedAvailable < remaining ||
             evidence.shipCapacity == null || evidence.shipCapacity < evidence.quantity ||
             !stockLabel.valid(width, height)) return null
         val normalized = norm(stockLabel.text)
