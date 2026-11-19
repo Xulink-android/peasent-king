@@ -115,6 +115,17 @@ class PlanningTest {
         assertEquals(AutomationCoordinator.Phase.WAITING_FOR_STABLE_CONTRACT,
             coordinator.evaluate(snapshot(96)).phase)
     }
+    @Test fun adjacentContractColumnsDoNotBorrowEachOthersKingdom() {
+        val result = ContractParser.parse(listOf(
+            ContractParser.Line("CONTRAT", 8, 35),
+            ContractParser.Line("ENVOYER 95", 10, 39),
+            ContractParser.Line("Eastmere", 32, 41),
+            ContractParser.Line("ENVOYER 111", 70, 39),
+            ContractParser.Line("Gullhaven Isles", 75, 41)
+        ))
+        assertEquals("Eastmere", result.contracts[0].kingdom)
+        assertEquals("Gullhaven Isles", result.contracts[1].kingdom)
+    }
     @Test fun emptyTextNeverCreatesContracts() {
         assertTrue(ContractParser.parse(emptyList()).contracts.isEmpty())
     }
