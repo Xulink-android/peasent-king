@@ -32,11 +32,11 @@ class MainActivity : Activity() {
             textSize = 16f
             setPadding(0, 12, 0, 4)
         }
-        root.addView(label("Peasant King Assistant — bêta navigation"))
+        root.addView(label("Peasant King Assistant — v2.12 bêta"))
         root.addView(label(
             "Lecture OCR locale et simulation des contrats. " +
             "Un geste facultatif Auto Port (1 fois) est disponible après activation et vérifications. " +
-            "Aucune expédition ni aucun transfert de ressources ne sont automatisés. " +
+            "Le moteur d’expédition en plusieurs étapes est en préparation, mais non activé. Aucune expédition ni aucun transfert de ressources ne sont automatisés. " +
             "Le bouton Masquer ferme seulement le panneau, sans révoquer l'autorisation Android."
         ))
         root.addView(Button(this).apply {
