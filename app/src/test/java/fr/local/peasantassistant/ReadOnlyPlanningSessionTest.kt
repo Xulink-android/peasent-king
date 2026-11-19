@@ -41,6 +41,24 @@ class ReadOnlyPlanningSessionTest {
         assertNull(session.proposal(2001, contract))
     }
 
+    @Test fun unverifiedPortInvalidatesPreviouslyConfirmedPort() {
+        val session = ReadOnlyPlanningSession()
+        session.observeContracts(contract, 1000)
+        session.observePort(port, 2000)
+        assertNotNull(session.proposal(2001, contract))
+        session.observePort(null, 2002)
+        assertNull(session.proposal(2003, contract))
+    }
+
+    @Test fun incompleteContractObservationInvalidatesBothScreens() {
+        val session = ReadOnlyPlanningSession()
+        session.observeContracts(contract, 1000)
+        session.observePort(port, 2000)
+        session.observeContracts(emptyList(), 2001)
+        session.observeContracts(contract, 2002)
+        assertNull(session.proposal(2003, contract))
+    }
+
     @Test fun resetDiscardsEverything() {
         val session = ReadOnlyPlanningSession()
         session.observeContracts(contract, 1000)
