@@ -19,7 +19,11 @@ class ReadOnlyPlanningSession(private val maxAgeMs: Long = 30_000L) {
         stable: List<ObservationGate.Snapshot>,
         nowMs: Long
     ): String {
-        if (stable.isEmpty()) return "Contrats non confirmés"
+        if (stable.isEmpty()) {
+            contracts = null
+            port = null
+            return "Contrats non confirmés : observations précédentes annulées"
+        }
         val sorted = stable.sortedWith(compareBy({ it.kingdom }, { it.resource }, { it.amount }))
         if (contracts?.value != null && contracts?.value != sorted) {
             port = null
@@ -29,7 +33,10 @@ class ReadOnlyPlanningSession(private val maxAgeMs: Long = 30_000L) {
     }
 
     fun observePort(verified: VerifiedStockGate.Verified?, nowMs: Long): String {
-        if (verified == null) return "Port non confirmé"
+        if (verified == null) {
+            port = null
+            return "Port non confirmé : ancien stock annulé"
+        }
         port = Timed(verified, nowMs)
         return "Port confirmé : ${verified.supplies.size} ressources"
     }
