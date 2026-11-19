@@ -36,6 +36,7 @@ class GameAccessibilityService : AccessibilityService() {
     private val worker = Executors.newSingleThreadExecutor()
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     private val observationGate = ObservationGate()
+    private val automationCoordinator = AutomationCoordinator()
     private var overlay: View? = null
     private var lastReport: String = ""
     private var currentPackage: String? = null
@@ -76,6 +77,7 @@ class GameAccessibilityService : AccessibilityService() {
         overlay = null
         autoScan = false
         observationGate.reset()
+        automationCoordinator.reset()
         ui.removeCallbacksAndMessages(null)
         recognizer.close()
         worker.shutdown()
@@ -157,6 +159,7 @@ class GameAccessibilityService : AccessibilityService() {
                 panelView = null
                 scanStatus = null
                 observationGate.reset()
+                automationCoordinator.reset()
                 // Hide the panel without revoking the Android authorization.
             }
         }
@@ -175,6 +178,7 @@ class GameAccessibilityService : AccessibilityService() {
                 if (!autoScan) {
                     ui.removeCallbacks(scanLoop)
                     observationGate.reset()
+                    automationCoordinator.reset()
                 }
                 text = if (autoScan) "Suivi ON" else "Suivi OFF"
                 status.text = if (autoScan) "Suivi OCR toutes les 5 secondes." else "Suivi arrêté."
@@ -351,6 +355,12 @@ class GameAccessibilityService : AccessibilityService() {
                             }.count { it }
                         } else 0
                         val verdict = observationGate.observe(parsed)
+                        val decision = automationCoordinator.evaluate(
+                            AutomationCoordinator.Snapshot(
+                                if (parsed.context == "Écran de contrats probable") "contracts" else "unknown",
+                                verdict.stable
+                            )
+                        )
                         lastReport = buildString {
                             appendLine("Peasant King — diagnostic OCR en lecture seule")
                             appendLine("Écran : $width x $height")
@@ -359,6 +369,7 @@ class GameAccessibilityService : AccessibilityService() {
                             appendLine("SIMULATION / INTERPRÉTATION")
                             appendLine(parsed.context)
                             appendLine("VÉRIFICATION : " + verdict.message)
+                            appendLine("AUTOMATISATION : " + decision.phase + " — " + decision.explanation)
                             if (shouldCollect) appendLine("Candidats icônes enregistrés localement : $savedIcons")
                             if (shouldCollect) appendLine("Images non étiquetées : identification non garantie.")
                             parsed.contracts.forEach { contract ->
