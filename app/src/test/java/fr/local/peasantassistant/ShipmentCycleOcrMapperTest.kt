@@ -36,8 +36,12 @@ class ShipmentCycleOcrMapperTest {
         assertFalse(valid.contractAccepted)
         assertTrue(valid.acceptButtonVisible)
         assertEquals(89, valid.quantity)
-        assertFalse(map(ShipmentCycleMachine.Screen.CONTRACTS, accepted = true,
-            stock = 100, capacity = 120, acceptVisible = true).unambiguous)
+        val accepted = map(ShipmentCycleMachine.Screen.CONTRACTS, accepted = true,
+            acceptVisible = false)
+        assertTrue("accepted status is the post-gesture proof", accepted.unambiguous)
+        assertTrue(accepted.contractAccepted)
+        assertFalse(map(ShipmentCycleMachine.Screen.CONTRACTS, accepted = false,
+            stock = 100, capacity = 120).unambiguous)
         assertFalse(map(ShipmentCycleMachine.Screen.CONTRACTS, stock = 88, capacity = 120,
             acceptVisible = true).unambiguous)
         assertFalse(map(ShipmentCycleMachine.Screen.CONTRACTS, stock = 100, capacity = 88,

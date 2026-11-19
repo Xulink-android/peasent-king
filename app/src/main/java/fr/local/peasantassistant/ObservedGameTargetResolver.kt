@@ -54,6 +54,8 @@ object ObservedGameTargetResolver {
     ): Gesture? {
         val reward = evidence.expectedReward ?: return null
         if (screen != GameScreenClassifier.Screen.WORLD_MAP || !validLoadPlan(evidence) ||
+            evidence.confirmedAvailable == null || evidence.confirmedAvailable < evidence.quantity ||
+            evidence.shipCapacity == null || evidence.shipCapacity < evidence.quantity ||
             evidence.observedResource != evidence.resource || reward <= 0) return null
         val send = boxes.filter { norm(it.text) == "ENVOYER ${evidence.quantity}" && it.valid(width, height) }
         val earn = boxes.filter { norm(it.text) == "GAGNER $reward" && it.valid(width, height) }
