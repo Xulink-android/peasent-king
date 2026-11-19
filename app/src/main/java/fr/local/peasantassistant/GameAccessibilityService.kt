@@ -36,6 +36,7 @@ class GameAccessibilityService : AccessibilityService() {
     private val worker = Executors.newSingleThreadExecutor()
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     private val observationGate = ObservationGate()
+    private val verifiedStockGate = VerifiedStockGate()
     private val automationCoordinator = AutomationCoordinator()
     private var overlay: View? = null
     private var lastReport: String = ""
@@ -66,6 +67,7 @@ class GameAccessibilityService : AccessibilityService() {
             scanPending = false
             collectIconSamples = false
             observationGate.reset()
+            verifiedStockGate.reset()
             automationCoordinator.reset()
             ui.removeCallbacks(scanLoop)
             overlay?.visibility = View.GONE
@@ -89,6 +91,7 @@ class GameAccessibilityService : AccessibilityService() {
         overlay = null
         autoScan = false
         observationGate.reset()
+        verifiedStockGate.reset()
         automationCoordinator.reset()
         ui.removeCallbacksAndMessages(null)
         recognizer.close()
@@ -403,6 +406,9 @@ class GameAccessibilityService : AccessibilityService() {
                         val stockObservation = StockScreenParser.parse(
                             detected.textBlocks.flatMap { it.lines }.map { it.text.trim() }
                         )
+                        val verifiedStock = verifiedStockGate.observe(
+                            parsed.context == "Écran de stocks probable", stockObservation
+                        )
                         val verdict = observationGate.observe(parsed)
                         val decision = automationCoordinator.evaluate(
                             AutomationCoordinator.Snapshot(
@@ -423,6 +429,11 @@ class GameAccessibilityService : AccessibilityService() {
                             }
                             appendLine("AUTOMATISATION : " + decision.phase + " — " + decision.explanation)
                             appendLine("LECTURE PORT (expérimentale, sans action) :")
+                            appendLine(if (verifiedStock == null) {
+                                "Stock non confirmé : aucune proposition d'expédition"
+                            } else {
+                                "Stock confirmé sur trois lectures identiques (diagnostic uniquement)"
+                            })
                             stockObservation.supplies.forEach {
                                 appendLine("Stock: ${it.resource} = ${it.availableAtPort}, réservé = ${it.reserved}")
                             }
