@@ -9,6 +9,7 @@ import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
 import android.view.Display
+import android.view.MotionEvent
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -39,6 +40,9 @@ class GameAccessibilityService : AccessibilityService() {
     private var currentPackage: String? = null
     private var capturing = false
     private var panelDismissed = false
+    private var collapsed = false
+    private var autoScan = false
+    private var panelView: View? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -60,6 +64,8 @@ class GameAccessibilityService : AccessibilityService() {
             } catch (_: Exception) { }
         }
         overlay = null
+        autoScan = false
+        ui.removeCallbacksAndMessages(null)
         recognizer.close()
         worker.shutdown()
         super.onDestroy()
@@ -79,6 +85,7 @@ class GameAccessibilityService : AccessibilityService() {
             setPadding(12, 8, 12, 8)
             setBackgroundColor(0xE5222930.toInt())
         }
+        panelView = panel
         val status = TextView(this).apply {
             text = "Peasant King : prêt à analyser"
             textSize = 12f
@@ -121,6 +128,8 @@ class GameAccessibilityService : AccessibilityService() {
             text = "X Fermer"
             setOnClickListener {
                 panelDismissed = true
+                autoScan = false
+                ui.removeCallbacksAndMessages(null)
                 capturing = false
                 this@GameAccessibilityService.overlay?.let { view ->
                     try { manager.removeView(view) } catch (_: Exception) { }
@@ -129,8 +138,27 @@ class GameAccessibilityService : AccessibilityService() {
                 disableSelf()
             }
         }
+        val collapse = Button(this).apply {
+            text = "Réduire"
+            setOnClickListener {
+                collapsed = !collapsed
+                buttons.visibility = if (collapsed) View.GONE else View.VISIBLE
+                text = if (collapsed) "Agrandir" else "Réduire"
+            }
+        }
+        val repeat = Button(this).apply {
+            text = "Suivi OFF"
+            setOnClickListener {
+                autoScan = !autoScan
+                text = if (autoScan) "Suivi ON" else "Suivi OFF"
+                status.text = if (autoScan) "Suivi OCR toutes les 5 secondes." else "Suivi arrêté."
+                if (autoScan) ui.post(scanLoop)
+            }
+        }
         buttons.addView(analyze)
         buttons.addView(copy)
+        buttons.addView(repeat)
+        panel.addView(collapse)
         panel.addView(close)
         panel.addView(buttons)
         panel.addView(ScrollView(this).apply {
@@ -149,11 +177,49 @@ class GameAccessibilityService : AccessibilityService() {
             x = 6
             y = 100
         }
+        panel.setOnTouchListener(object : View.OnTouchListener {
+            var startX = 0
+            var startY = 0
+            var touchX = 0f
+            var touchY = 0f
+            override fun onTouch(v: View, event: MotionEvent): Boolean {
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        startX = params.x; startY = params.y
+                        touchX = event.rawX; touchY = event.rawY
+                        return true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        params.x = (startX + event.rawX - touchX).toInt().coerceAtLeast(0)
+                        params.y = (startY + event.rawY - touchY).toInt().coerceAtLeast(0)
+                        try { manager.updateViewLayout(panel, params) } catch (_: Exception) {}
+                        return true
+                    }
+                }
+                return false
+            }
+        })
         try {
             manager.addView(panel, params)
             overlay = panel
         } catch (_: Exception) {
             overlay = null
+        }
+    }
+
+    private val scanLoop = object : Runnable {
+        override fun run() {
+            if (!autoScan || panelDismissed) return
+            if (!capturing && isGameVisible()) {
+                panelView?.visibility = View.INVISIBLE
+                ui.postDelayed({
+                    if (!autoScan || panelDismissed) return@postDelayed
+                    inspect { message ->
+                        if (!panelDismissed) panelView?.visibility = View.VISIBLE
+                    }
+                }, 350)
+            }
+            ui.postDelayed(this, 5000)
         }
     }
 
