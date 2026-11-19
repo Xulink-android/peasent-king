@@ -32,7 +32,7 @@ class MainActivity : Activity() {
             textSize = 16f
             setPadding(0, 12, 0, 4)
         }
-        root.addView(label("Peasant King Assistant — v2.9 (navigation)"))
+        root.addView(label("Peasant King Assistant — bêta navigation"))
         root.addView(label(
             "Lecture OCR locale et simulation des contrats. " +
             "Aucun clic ni transfert automatique n'est effectué. " +
@@ -78,7 +78,7 @@ class MainActivity : Activity() {
         root.addView(label("Bibliothèque locale d'icônes (expérimental)"))
         root.addView(label(
             "Dans le jeu, ouvre les contrats puis utilise Capturer icônes. " +
-            "Les découpes sont approximatives et ne sont pas automatiquement identifiées."
+            "Les découpes sont approximatives ; les références extraites du jeu restent expérimentales."
         ))
         val gallery = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(Button(this).apply {
