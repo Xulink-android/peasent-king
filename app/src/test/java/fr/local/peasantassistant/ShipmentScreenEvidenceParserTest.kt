@@ -17,7 +17,7 @@ class ShipmentScreenEvidenceParserTest {
         assertEquals(89, evidence.requestedQuantity)
         assertEquals(200, evidence.shipCapacity)
         assertEquals(8, evidence.reward)
-        assertEquals("EASTMERE", evidence.kingdom)
+        assertEquals("Eastmere", evidence.kingdom)
         assertTrue(evidence.warnings.isEmpty())
     }
 
@@ -26,7 +26,7 @@ class ShipmentScreenEvidenceParserTest {
             "Highvale Star à Eastmere",
             "Récupérer 8"
         ))
-        assertEquals("EASTMERE", evidence.kingdom)
+        assertEquals("Eastmere", evidence.kingdom)
         assertEquals(8, evidence.paymentAmount)
         assertNull(evidence.loadedQuantity)
     }

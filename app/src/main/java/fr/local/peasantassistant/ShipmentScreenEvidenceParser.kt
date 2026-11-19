@@ -75,11 +75,13 @@ object ShipmentScreenEvidenceParser {
                 .matchEntire(line)?.groupValues?.get(1)?.replace(" ", "")?.toIntOrNull()
                 ?.takeIf { it > 0 }
         }
-        val destinations = normalized.mapNotNull { line ->
-            Regex("""^NAVIGUEZ VERS\s+(.+)$""").matchEntire(line)?.groupValues?.get(1)
-                ?: Regex("""^[A-Z0-9 .'’-]+\s+A\s+([A-Z0-9 .'’-]+)$""")
+        val destinations = lines.mapNotNull { raw ->
+            val line = raw.trim()
+            Regex("""^NAVIGUEZ VERS\s+(.+)$""", RegexOption.IGNORE_CASE)
+                .matchEntire(line)?.groupValues?.get(1)
+                ?: Regex("""^.+\s+à\s+(.+)$""", RegexOption.IGNORE_CASE)
                     .matchEntire(line)?.groupValues?.get(1)
-        }.filterNot { it in setOf("LA MER", "LA TERRE", "L'EST") }
+        }.filterNot { normalize(it) in setOf("LA MER", "LA TERRE", "L'EST") }
 
         return Evidence(
             loadedQuantity = progress.singleOrNull()?.first,

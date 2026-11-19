@@ -8,7 +8,7 @@
 
 ---
 
-# Peasant King Assistant — v2.21 bêta
+# Peasant King Assistant — v2.22 bêta
 
 Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
 
@@ -94,6 +94,11 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 
 - Le rapport OCR du service affiche maintenant la progression, la capacité, la récompense, la destination et le montant visible à récupérer, avec les ambiguïtés signalées.
 - Les valeurs restent informatives : le service ne les transmet pas au moteur de cycle et ne déclenche aucun geste d'expédition.
+
+## v2.22 — destination OCR conservée
+
+- Les noms de royaumes extraits du texte gardent leur casse observée afin de pouvoir être comparés exactement aux contrats. La comparaison des valeurs équivalentes reste insensible à la casse pour détecter les doublons.
+- Correction couverte par les tests du parseur ; elle ne déclenche aucun geste.
 
 ## Audit de la grille observée
 
