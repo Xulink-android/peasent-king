@@ -588,7 +588,12 @@ class GameAccessibilityService : AccessibilityService() {
                             if (shouldCollect) appendLine("Images non étiquetées : identification non garantie.")
                             parsed.contracts.forEach { contract ->
                                 appendLine("Contrat : royaume=" + (contract.kingdom ?: "inconnu") +
-                                    ", quantité=" + contract.amount + ", ressource=" + (contract.resource ?: "inconnue"))
+                                    ", quantité=" + contract.amount + ", ressource=" + (contract.resource ?: "inconnue") +
+                                    ", statut=" + when (contract.accepted) {
+                                        true -> "signé (OCR)"
+                                        false -> "à accepter (OCR)"
+                                        null -> "inconnu"
+                                    })
                             }
                             parsed.warnings.forEach { appendLine("Attention : " + it) }
                             appendLine("Navigation Port : " + when {

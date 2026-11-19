@@ -5,7 +5,13 @@ package fr.local.peasantassistant
  * Only a repeated, identical, unambiguous contract can become a candidate.
  */
 class ObservationGate(private val requiredMatches: Int = 3) {
-    data class Snapshot(val kingdom: String, val resource: String, val amount: Int, val reward: Int? = null)
+    data class Snapshot(
+        val kingdom: String,
+        val resource: String,
+        val amount: Int,
+        val reward: Int? = null,
+        val accepted: Boolean? = null
+    )
     data class Verdict(val stable: List<Snapshot>, val message: String)
 
     private var previous: List<Snapshot>? = null
@@ -26,9 +32,9 @@ class ObservationGate(private val requiredMatches: Int = 3) {
             return Verdict(emptyList(), "Contrat incomplet : pas de décision")
         }
         val current = result.contracts.map {
-            Snapshot(it.kingdom!!.trim(), it.resource!!.trim(), it.amount, it.reward)
+            Snapshot(it.kingdom!!.trim(), it.resource!!.trim(), it.amount, it.reward, it.accepted)
         }.sortedWith(compareBy({ it.kingdom }, { it.resource }, { it.amount }))
-        if (current.distinct().size != current.size) {
+        if (current.map { listOf(it.kingdom, it.resource, it.amount, it.reward) }.distinct().size != current.size) {
             reset()
             return Verdict(emptyList(), "Doublons ambigus : pas de décision")
         }

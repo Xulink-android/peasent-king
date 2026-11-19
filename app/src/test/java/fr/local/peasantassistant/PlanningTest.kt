@@ -26,6 +26,18 @@ class PlanningTest {
         ))
         assertEquals(listOf(8, 6), result.contracts.map { it.reward })
     }
+
+    @Test fun contractStatusStaysAttachedToItsOwnColumn() {
+        val result = ContractParser.parse(listOf(
+            ContractParser.Line("ENVOYER 95", 10, 39),
+            ContractParser.Line("Eastmere", 12, 41),
+            ContractParser.Line("SIGNÉ", 10, 35),
+            ContractParser.Line("ENVOYER 111", 70, 39),
+            ContractParser.Line("Gullhaven Isles", 72, 41),
+            ContractParser.Line("ACCEPTER", 70, 35)
+        ))
+        assertEquals(listOf(true, false), result.contracts.map { it.accepted })
+    }
     @Test fun fillsPortAfterLoadingWithoutOverfilling() {
         val decision = StockPlanner.plan(StockPlanner.Stock("coal", 200, 70, 20, 160, 0, 50))
         assertEquals(110, decision.transfer)

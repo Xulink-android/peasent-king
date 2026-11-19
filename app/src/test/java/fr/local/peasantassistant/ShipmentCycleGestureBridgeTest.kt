@@ -24,7 +24,7 @@ class ShipmentCycleGestureBridgeTest {
             val contract = ShipmentCycleMachine.Observation(
                 screen = ShipmentCycleMachine.Screen.CONTRACTS,
                 resource = "lumber", quantity = 89, kingdom = "Eastmere", stockAvailable = 111,
-                shipCapacity = 200, reward = 8, contractVerified = true, unambiguous = true
+                shipCapacity = 200, reward = 8, contractVerified = true, contractAccepted = true, unambiguous = true
             )
             val boxes = frame(listOf(
                 ObservedGameTargetResolver.Box("TERRE", 100, 100, 230, 150),
@@ -46,7 +46,7 @@ class ShipmentCycleGestureBridgeTest {
             val contract = ShipmentCycleMachine.Observation(
                 screen = ShipmentCycleMachine.Screen.CONTRACTS,
                 resource = "lumber", quantity = 89, kingdom = "Eastmere", stockAvailable = 111,
-                shipCapacity = 200, reward = 8, contractVerified = true, unambiguous = true
+                shipCapacity = 200, reward = 8, contractVerified = true, contractAccepted = true, unambiguous = true
             )
             val badFrame = frame(listOf(ObservedGameTargetResolver.Box("PORT", 800, 2070, 980, 2140)))
             observe(contract, badFrame, 1100)

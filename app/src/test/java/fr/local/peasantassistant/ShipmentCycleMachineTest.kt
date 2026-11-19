@@ -25,7 +25,7 @@ class ShipmentCycleMachineTest {
     @Test fun fullCycleRequiresAcknowledgementAndFreshEvidenceAtEveryPhase() {
         val machine = ShipmentCycleMachine()
         machine.start(plan, userApproved = true, nowMs = 1000)
-        val contract = base(ShipmentCycleMachine.Screen.CONTRACTS).copy(contractVerified = true)
+        val contract = base(ShipmentCycleMachine.Screen.CONTRACTS).copy(contractVerified = true, contractAccepted = true)
         assertEquals(ShipmentCycleMachine.Action.OPEN_PORT, stable(machine, contract, 1100).action)
         assertEquals(ShipmentCycleMachine.State.WAITING_FOR_LOAD,
             machine.acknowledge(ShipmentCycleMachine.Action.OPEN_PORT, true).state)
@@ -67,19 +67,30 @@ class ShipmentCycleMachineTest {
         val machine = ShipmentCycleMachine()
         machine.start(plan, true, 1000)
         val lowStock = base(ShipmentCycleMachine.Screen.CONTRACTS)
-            .copy(contractVerified = true, stockAvailable = 88)
+            .copy(contractVerified = true, contractAccepted = true, stockAvailable = 88)
         assertEquals(ShipmentCycleMachine.State.BLOCKED, stable(machine, lowStock, 1100).state)
 
         machine.start(plan, true, 2000)
         val uncertain = base(ShipmentCycleMachine.Screen.CONTRACTS)
-            .copy(contractVerified = true, unambiguous = false)
+            .copy(contractVerified = true, contractAccepted = true, unambiguous = false)
         assertEquals(ShipmentCycleMachine.State.BLOCKED, machine.observe(uncertain, 2100).state)
+    }
+
+    @Test fun unacceptedContractNeverOpensThePortForAnAutomatedCycle() {
+        val machine = ShipmentCycleMachine()
+        machine.start(plan, userApproved = true, nowMs = 1000)
+        val unaccepted = base(ShipmentCycleMachine.Screen.CONTRACTS).copy(
+            contractVerified = true,
+            contractAccepted = false
+        )
+        assertEquals(ShipmentCycleMachine.State.BLOCKED, stable(machine, unaccepted, 1100).state)
+        assertNull(machine.observe(unaccepted, 1500).action)
     }
 
     @Test fun departureIsNeverRetriedAndStopCancelsPendingActions() {
         val machine = ShipmentCycleMachine()
         machine.start(plan, true, 1000)
-        stable(machine, base(ShipmentCycleMachine.Screen.CONTRACTS).copy(contractVerified = true), 1100)
+        stable(machine, base(ShipmentCycleMachine.Screen.CONTRACTS).copy(contractVerified = true, contractAccepted = true), 1100)
         machine.acknowledge(ShipmentCycleMachine.Action.OPEN_PORT, true)
         assertEquals(ShipmentCycleMachine.Action.LOAD_CARGO, loadPart(machine, 0, 1500).action)
         machine.acknowledge(ShipmentCycleMachine.Action.LOAD_CARGO, true)
@@ -101,11 +112,11 @@ class ShipmentCycleMachineTest {
         val machine = ShipmentCycleMachine()
         machine.start(plan, true, 1000)
         val wrong = base(ShipmentCycleMachine.Screen.CONTRACTS).copy(
-            kingdom = "Gullhaven Isles", contractVerified = true)
+            kingdom = "Gullhaven Isles", contractVerified = true, contractAccepted = true)
         assertEquals(ShipmentCycleMachine.State.BLOCKED, stable(machine, wrong, 1100).state)
 
         machine.start(plan, true, 2000)
-        stable(machine, base(ShipmentCycleMachine.Screen.CONTRACTS).copy(contractVerified = true), 2100)
+        stable(machine, base(ShipmentCycleMachine.Screen.CONTRACTS).copy(contractVerified = true, contractAccepted = true), 2100)
         assertEquals(ShipmentCycleMachine.State.BLOCKED,
             machine.acknowledge(ShipmentCycleMachine.Action.OPEN_PORT, false).state)
     }
@@ -113,7 +124,7 @@ class ShipmentCycleMachineTest {
     @Test fun noLoadProgressBlocksWithoutRepeatingTheDrag() {
         val machine = ShipmentCycleMachine()
         machine.start(plan, true, 1000)
-        stable(machine, base(ShipmentCycleMachine.Screen.CONTRACTS).copy(contractVerified = true), 1100)
+        stable(machine, base(ShipmentCycleMachine.Screen.CONTRACTS).copy(contractVerified = true, contractAccepted = true), 1100)
         machine.acknowledge(ShipmentCycleMachine.Action.OPEN_PORT, true)
         assertEquals(ShipmentCycleMachine.Action.LOAD_CARGO, loadPart(machine, 0, 1500).action)
         machine.acknowledge(ShipmentCycleMachine.Action.LOAD_CARGO, true)

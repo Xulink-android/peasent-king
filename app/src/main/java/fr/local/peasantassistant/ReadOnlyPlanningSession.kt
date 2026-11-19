@@ -24,7 +24,7 @@ class ReadOnlyPlanningSession(private val maxAgeMs: Long = 30_000L) {
             port = null
             return "Contrats non confirmés : observations précédentes annulées"
         }
-        val sorted = stable.sortedWith(compareBy({ it.kingdom }, { it.resource }, { it.amount }))
+        val sorted = stable.sortedWith(compareBy({ it.kingdom }, { it.resource }, { it.amount }, { it.accepted }))
         if (contracts?.value != null && contracts?.value != sorted) {
             port = null
         }
@@ -44,12 +44,14 @@ class ReadOnlyPlanningSession(private val maxAgeMs: Long = 30_000L) {
     fun proposal(nowMs: Long, currentStableContracts: List<ObservationGate.Snapshot>): ShipmentPlanner.Proposal? {
         if (currentStableContracts.isEmpty()) return null
         val c = contracts ?: return null
-        if (currentStableContracts.sortedWith(compareBy({ it.kingdom }, { it.resource }, { it.amount })) != c.value) return null
+        if (currentStableContracts.sortedWith(compareBy({ it.kingdom }, { it.resource }, { it.amount }, { it.accepted })) != c.value) return null
         val p = port ?: return null
         if (nowMs < c.at || nowMs < p.at ||
             nowMs - c.at > maxAgeMs || nowMs - p.at > maxAgeMs) return null
+        val acceptedContracts = c.value.filter { it.accepted == true }
+        if (acceptedContracts.isEmpty()) return null
         return ShipmentPlanner.plan(
-            c.value.map { ShipmentPlanner.Demand(it.kingdom, it.resource, it.amount, it.reward) },
+            acceptedContracts.map { ShipmentPlanner.Demand(it.kingdom, it.resource, it.amount, it.reward) },
             p.value.supplies, p.value.capacity, p.value.ships
         ).proposals.firstOrNull()
     }

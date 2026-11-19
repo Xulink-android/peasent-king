@@ -5,7 +5,10 @@ import kotlin.math.abs
 /** Pure OCR interpretation; never guesses the resource from a quantity. */
 object ContractParser {
     data class Line(val text: String, val x: Int, val y: Int)
-    data class Contract(val kingdom: String?, val amount: Int, val y: Int, val resource: String?, val x: Int = -1, val reward: Int? = null)
+    data class Contract(
+        val kingdom: String?, val amount: Int, val y: Int, val resource: String?,
+        val x: Int = -1, val reward: Int? = null, val accepted: Boolean? = null
+    )
     data class Result(val contracts: List<Contract>, val warnings: List<String>, val context: String)
 
     private val send = Regex("""^(?:ENVOYER|SEND)\s+([0-9][0-9 .]*)\s*$""", RegexOption.IGNORE_CASE)
@@ -57,7 +60,16 @@ object ContractParser {
                 rewardLine.matchEntire(candidate.text.trim())?.groupValues?.get(1)
                     ?.filter { it.isDigit() }?.toIntOrNull()
             }.distinct().singleOrNull()
-            Contract(kingdom, n, line.y, resource, line.x, reward)
+            val acceptedMarkers = nearby.count { it.text.trim().equals("SIGNÉ", true) ||
+                it.text.trim().equals("SIGNE", true) || it.text.trim().equals("SIGNED", true) }
+            val availableMarkers = nearby.count { it.text.trim().equals("ACCEPTER", true) ||
+                it.text.trim().equals("ACCEPT", true) }
+            val accepted = when {
+                acceptedMarkers == 1 && availableMarkers == 0 -> true
+                availableMarkers == 1 && acceptedMarkers == 0 -> false
+                else -> null
+            }
+            Contract(kingdom, n, line.y, resource, line.x, reward, accepted)
         }
         val warnings = mutableListOf<String>()
         if (contracts.isEmpty()) warnings += "Aucune demande ENVOYER reconnue."

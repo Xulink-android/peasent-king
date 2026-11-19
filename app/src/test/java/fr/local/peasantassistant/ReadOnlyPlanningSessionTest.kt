@@ -4,7 +4,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ReadOnlyPlanningSessionTest {
-    private val contract = listOf(ObservationGate.Snapshot("Eastmere", "grain", 95))
+    private val contract = listOf(ObservationGate.Snapshot("Eastmere", "grain", 95, accepted = true))
     private val port = VerifiedStockGate.Verified(
         listOf(ShipmentPlanner.Supply("grain", 120, 10)), 100, 1
     )
@@ -29,7 +29,7 @@ class ReadOnlyPlanningSessionTest {
         val session = ReadOnlyPlanningSession()
         session.observeContracts(contract, 1000)
         session.observePort(port, 2000)
-        val changed = listOf(ObservationGate.Snapshot("Eastmere", "grain", 96))
+        val changed = listOf(ObservationGate.Snapshot("Eastmere", "grain", 96, accepted = true))
         session.observeContracts(changed, 3000)
         assertNull(session.proposal(3001, changed))
     }
@@ -39,6 +39,19 @@ class ReadOnlyPlanningSessionTest {
         session.observeContracts(contract, 1000)
         session.observePort(port.copy(supplies = listOf(ShipmentPlanner.Supply("grain", 100, 10))), 2000)
         assertNull(session.proposal(2001, contract))
+    }
+
+    @Test fun neverProposesAnUnacceptedOrUnknownContract() {
+        val session = ReadOnlyPlanningSession()
+        val pending = listOf(ObservationGate.Snapshot("Eastmere", "grain", 95, accepted = false))
+        session.observeContracts(pending, 1000)
+        session.observePort(port, 1100)
+        assertNull(session.proposal(1200, pending))
+
+        val unknown = listOf(ObservationGate.Snapshot("Eastmere", "grain", 95))
+        session.observeContracts(unknown, 1300)
+        session.observePort(port, 1400)
+        assertNull(session.proposal(1500, unknown))
     }
 
     @Test fun unverifiedPortInvalidatesPreviouslyConfirmedPort() {

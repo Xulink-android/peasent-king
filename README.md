@@ -8,7 +8,7 @@
 
 ---
 
-# Peasant King Assistant — v2.22 bêta
+# Peasant King Assistant — v2.23 bêta
 
 Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
 
@@ -99,6 +99,12 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 
 - Les noms de royaumes extraits du texte gardent leur casse observée afin de pouvoir être comparés exactement aux contrats. La comparaison des valeurs équivalentes reste insensible à la casse pour détecter les doublons.
 - Correction couverte par les tests du parseur ; elle ne déclenche aucun geste.
+
+## v2.23 — filtrage des contrats signés
+
+- Le parseur relève séparément les marqueurs OCR « signé » et « accepter ». Le rapport signale aussi l'état inconnu.
+- La proposition multi-écrans ne retient maintenant que les contrats explicitement reconnus comme signés ; les contrats non signés ou au statut incertain ne sont pas proposés. Des tests couvrent le cas où plusieurs contrats côte à côte ont des statuts différents.
+- Ce filtrage sécurise la planification mais ne relie toujours pas le cycle aux gestes Android. Aucun envoi automatique n'est activé.
 
 ## Audit de la grille observée
 

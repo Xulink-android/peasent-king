@@ -16,6 +16,7 @@ class ShipmentCycleMachine {
         val shipCapacity: Int? = null,
         val reward: Int? = null,
         val contractVerified: Boolean = false,
+        val contractAccepted: Boolean = false,
         val cargoLoaded: Boolean = false,
         val loadedQuantity: Int? = null,
         val departureAccepted: Boolean = false,
@@ -64,7 +65,7 @@ class ShipmentCycleMachine {
             else Decision(state, reason = "Attente d'une nouvelle preuve après le geste")
         }
         val fingerprint = listOf(value.screen, value.resource, value.quantity, value.kingdom,
-            value.stockAvailable, value.shipCapacity, value.reward, value.contractVerified,
+            value.stockAvailable, value.shipCapacity, value.reward, value.contractVerified, value.contractAccepted,
             value.cargoLoaded, value.loadedQuantity, value.departureAccepted, value.arrivalConfirmed,
             value.cargoUnloaded, value.paymentCollected).joinToString("|")
         stableCount = if (fingerprint == previousFingerprint) stableCount + 1 else 1
@@ -75,7 +76,7 @@ class ShipmentCycleMachine {
             value.kingdom == plan.kingdom
         val action = when (state) {
             State.WAITING_FOR_CONTRACT -> {
-                if (value.screen != Screen.CONTRACTS || !value.contractVerified || !cargoMatches() ||
+                if (value.screen != Screen.CONTRACTS || !value.contractVerified || !value.contractAccepted || !cargoMatches() ||
                     value.reward != plan.expectedReward ||
                     value.stockAvailable == null || value.stockAvailable < plan.quantity ||
                     value.shipCapacity == null || value.shipCapacity < plan.quantity)
