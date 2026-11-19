@@ -5,6 +5,9 @@ import android.content.Intent
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.BitmapFactory
+import android.widget.ImageView
+import java.io.File
 import android.os.Bundle
 import android.provider.Settings
 import android.text.InputType
@@ -27,7 +30,7 @@ class MainActivity : Activity() {
             textSize = 16f
             setPadding(0, 12, 0, 4)
         }
-        root.addView(label("Peasant King Assistant — v1.7 (simulation)"))
+        root.addView(label("Peasant King Assistant — v1.8 (simulation)"))
         root.addView(label(
             "Lecture OCR locale et simulation des contrats. " +
             "Aucun clic ni transfert automatique n'est effectué. " +
@@ -64,6 +67,35 @@ class MainActivity : Activity() {
             }
         })
         root.addView(diagnostic)
+        root.addView(label("Bibliothèque locale d'icônes (expérimental)"))
+        root.addView(label(
+            "Dans le jeu, ouvre les contrats puis utilise Capturer icônes. " +
+            "Les découpes sont approximatives et ne sont pas automatiquement identifiées."
+        ))
+        val gallery = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(Button(this).apply {
+            text = "Afficher les découpes capturées"
+            setOnClickListener {
+                gallery.removeAllViews()
+                val dir = File(filesDir, "icon_candidates")
+                val files = dir.listFiles()?.filter { it.extension == "png" }?.sortedBy { it.name }
+                    ?: emptyList()
+                if (files.isEmpty()) {
+                    gallery.addView(label("Aucune icône capturée pour le moment."))
+                }
+                files.forEach { file ->
+                    val bitmap = BitmapFactory.decodeFile(file.absolutePath) ?: return@forEach
+                    val preview = ImageView(this@MainActivity).apply {
+                        setImageBitmap(bitmap)
+                        adjustViewBounds = true
+                        layoutParams = LinearLayout.LayoutParams(180, 180)
+                    }
+                    gallery.addView(label(file.name + " — découpe non vérifiée"))
+                    gallery.addView(preview)
+                }
+            }
+        })
+        root.addView(gallery)
         root.addView(label("Calculateur de réapprovisionnement — valeurs à saisir depuis le jeu"))
         val resource = EditText(this).apply { hint = "Ressource (ex. blé)" }
         root.addView(resource)
