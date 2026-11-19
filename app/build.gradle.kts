@@ -10,8 +10,8 @@ android {
         applicationId = "fr.local.peasantassistant"
         minSdk = 32
         targetSdk = 34
-        versionCode = 31
-        versionName = "2.11-beta-navigation"
+        versionCode = 32
+        versionName = "2.12-workflow-preview"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
