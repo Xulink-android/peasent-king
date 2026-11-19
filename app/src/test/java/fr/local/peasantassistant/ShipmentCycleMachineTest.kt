@@ -17,6 +17,9 @@ class ShipmentCycleMachineTest {
         stockAvailable = 111, shipCapacity = 200, reward = 8, unambiguous = true
     )
 
+    private fun loadPart(machine: ShipmentCycleMachine, loaded: Int, start: Long): ShipmentCycleMachine.Decision =
+        stable(machine, base(ShipmentCycleMachine.Screen.SHIP_LOADING).copy(loadedQuantity = loaded), start)
+
     @Test fun fullCycleRequiresAcknowledgementAndFreshEvidenceAtEveryPhase() {
         val machine = ShipmentCycleMachine()
         machine.start(plan, userApproved = true, nowMs = 1000)
@@ -25,32 +28,37 @@ class ShipmentCycleMachineTest {
         assertEquals(ShipmentCycleMachine.State.WAITING_FOR_LOAD,
             machine.acknowledge(ShipmentCycleMachine.Action.OPEN_PORT, true).state)
 
-        assertEquals(ShipmentCycleMachine.Action.LOAD_CARGO,
-            stable(machine, base(ShipmentCycleMachine.Screen.SHIP_LOADING), 1500).action)
-        assertEquals(ShipmentCycleMachine.State.WAITING_FOR_READY,
+        assertEquals(ShipmentCycleMachine.Action.LOAD_CARGO, loadPart(machine, 0, 1500).action)
+        assertEquals(ShipmentCycleMachine.State.VERIFYING_LOAD,
             machine.acknowledge(ShipmentCycleMachine.Action.LOAD_CARGO, true).state)
+        assertEquals(ShipmentCycleMachine.State.WAITING_FOR_LOAD, loadPart(machine, 48, 1800).state)
+        assertEquals(ShipmentCycleMachine.Action.LOAD_CARGO, loadPart(machine, 48, 2100).action)
+        assertEquals(ShipmentCycleMachine.State.VERIFYING_LOAD,
+            machine.acknowledge(ShipmentCycleMachine.Action.LOAD_CARGO, true).state)
+        assertEquals(ShipmentCycleMachine.State.WAITING_FOR_READY, loadPart(machine, 89, 2400).state)
 
-        val ready = base(ShipmentCycleMachine.Screen.SHIP_READY).copy(cargoLoaded = true)
-        assertEquals(ShipmentCycleMachine.Action.SEND_SHIP, stable(machine, ready, 1900).action)
+        val ready = base(ShipmentCycleMachine.Screen.SHIP_READY)
+            .copy(cargoLoaded = true, loadedQuantity = 89)
+        assertEquals(ShipmentCycleMachine.Action.SEND_SHIP, stable(machine, ready, 2700).action)
         assertEquals(ShipmentCycleMachine.State.VERIFYING_DEPARTURE,
             machine.acknowledge(ShipmentCycleMachine.Action.SEND_SHIP, true).state)
         assertEquals(ShipmentCycleMachine.State.WAITING_FOR_ARRIVAL,
-            stable(machine, base(ShipmentCycleMachine.Screen.SHIP_SAILING).copy(departureAccepted = true), 2300).state)
+            stable(machine, base(ShipmentCycleMachine.Screen.SHIP_SAILING).copy(departureAccepted = true), 3000).state)
 
         assertEquals(ShipmentCycleMachine.Action.UNLOAD_CARGO,
-            stable(machine, base(ShipmentCycleMachine.Screen.UNLOAD_CARGO).copy(arrivalConfirmed = true), 2700).action)
+            stable(machine, base(ShipmentCycleMachine.Screen.UNLOAD_CARGO).copy(arrivalConfirmed = true), 3300).action)
         assertEquals(ShipmentCycleMachine.State.VERIFYING_UNLOAD,
             machine.acknowledge(ShipmentCycleMachine.Action.UNLOAD_CARGO, true).state)
         assertEquals(ShipmentCycleMachine.State.WAITING_FOR_PAYMENT,
-            stable(machine, base(ShipmentCycleMachine.Screen.PAYMENT_IN_TRANSIT).copy(cargoUnloaded = true), 3100).state)
+            stable(machine, base(ShipmentCycleMachine.Screen.PAYMENT_IN_TRANSIT).copy(cargoUnloaded = true), 3600).state)
 
         assertEquals(ShipmentCycleMachine.Action.COLLECT_PAYMENT,
-            stable(machine, base(ShipmentCycleMachine.Screen.COLLECT_PAYMENT), 3500).action)
+            stable(machine, base(ShipmentCycleMachine.Screen.COLLECT_PAYMENT), 3900).action)
         assertEquals(ShipmentCycleMachine.State.VERIFYING_PAYMENT,
             machine.acknowledge(ShipmentCycleMachine.Action.COLLECT_PAYMENT, true).state)
         assertEquals(ShipmentCycleMachine.State.COMPLETED,
-            stable(machine, base(ShipmentCycleMachine.Screen.WORLD_MAP).copy(paymentCollected = true), 3900).state)
-        assertNull(machine.observe(base(ShipmentCycleMachine.Screen.WORLD_MAP), 4300).action)
+            stable(machine, base(ShipmentCycleMachine.Screen.WORLD_MAP).copy(paymentCollected = true), 4200).state)
+        assertNull(machine.observe(base(ShipmentCycleMachine.Screen.WORLD_MAP), 4500).action)
     }
 
     @Test fun insufficientStockAndAmbiguousOcrBlockBeforeAnyAction() {
@@ -69,17 +77,18 @@ class ShipmentCycleMachineTest {
     @Test fun departureIsNeverRetriedAndStopCancelsPendingActions() {
         val machine = ShipmentCycleMachine()
         machine.start(plan, true, 1000)
-        val contract = base(ShipmentCycleMachine.Screen.CONTRACTS).copy(contractVerified = true)
-        stable(machine, contract, 1100)
+        stable(machine, base(ShipmentCycleMachine.Screen.CONTRACTS).copy(contractVerified = true), 1100)
         machine.acknowledge(ShipmentCycleMachine.Action.OPEN_PORT, true)
-        stable(machine, base(ShipmentCycleMachine.Screen.SHIP_LOADING), 1500)
+        assertEquals(ShipmentCycleMachine.Action.LOAD_CARGO, loadPart(machine, 0, 1500).action)
         machine.acknowledge(ShipmentCycleMachine.Action.LOAD_CARGO, true)
-        stable(machine, base(ShipmentCycleMachine.Screen.SHIP_READY).copy(cargoLoaded = true), 1900)
+        assertEquals(ShipmentCycleMachine.State.WAITING_FOR_READY, loadPart(machine, 89, 1800).state)
+        val ready = base(ShipmentCycleMachine.Screen.SHIP_READY).copy(cargoLoaded = true, loadedQuantity = 89)
+        stable(machine, ready, 2100)
         machine.acknowledge(ShipmentCycleMachine.Action.SEND_SHIP, true)
 
         val notAccepted = base(ShipmentCycleMachine.Screen.WORLD_MAP)
         assertEquals(ShipmentCycleMachine.State.VERIFYING_DEPARTURE,
-            stable(machine, notAccepted, 2300).state)
+            stable(machine, notAccepted, 2400).state)
         assertNull(machine.observe(notAccepted, 2700).action)
 
         machine.stop()
@@ -97,5 +106,16 @@ class ShipmentCycleMachineTest {
         stable(machine, base(ShipmentCycleMachine.Screen.CONTRACTS).copy(contractVerified = true), 2100)
         assertEquals(ShipmentCycleMachine.State.BLOCKED,
             machine.acknowledge(ShipmentCycleMachine.Action.OPEN_PORT, false).state)
+    }
+
+    @Test fun noLoadProgressBlocksWithoutRepeatingTheDrag() {
+        val machine = ShipmentCycleMachine()
+        machine.start(plan, true, 1000)
+        stable(machine, base(ShipmentCycleMachine.Screen.CONTRACTS).copy(contractVerified = true), 1100)
+        machine.acknowledge(ShipmentCycleMachine.Action.OPEN_PORT, true)
+        assertEquals(ShipmentCycleMachine.Action.LOAD_CARGO, loadPart(machine, 0, 1500).action)
+        machine.acknowledge(ShipmentCycleMachine.Action.LOAD_CARGO, true)
+        assertEquals(ShipmentCycleMachine.State.BLOCKED, loadPart(machine, 0, 1800).state)
+        assertNull(machine.observe(base(ShipmentCycleMachine.Screen.SHIP_LOADING).copy(loadedQuantity = 0), 2200).action)
     }
 }

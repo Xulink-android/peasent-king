@@ -3,7 +3,7 @@ package fr.local.peasantassistant
 /** Fail-closed lifecycle for one shipment, including arrival, unloading and payment collection. */
 class ShipmentCycleMachine {
     enum class Screen { CONTRACTS, WORLD_MAP, SHIPYARD, SHIP_LOADING, SHIP_READY, SHIP_SAILING, UNLOAD_CARGO, PAYMENT_IN_TRANSIT, COLLECT_PAYMENT, UNKNOWN }
-    enum class State { STOPPED, WAITING_FOR_CONTRACT, WAITING_FOR_LOAD, WAITING_FOR_READY, VERIFYING_DEPARTURE, WAITING_FOR_ARRIVAL, VERIFYING_UNLOAD, WAITING_FOR_PAYMENT, VERIFYING_PAYMENT, COMPLETED, BLOCKED }
+    enum class State { STOPPED, WAITING_FOR_CONTRACT, WAITING_FOR_LOAD, VERIFYING_LOAD, WAITING_FOR_READY, VERIFYING_DEPARTURE, WAITING_FOR_ARRIVAL, VERIFYING_UNLOAD, WAITING_FOR_PAYMENT, VERIFYING_PAYMENT, COMPLETED, BLOCKED }
     enum class Action { OPEN_PORT, LOAD_CARGO, SEND_SHIP, UNLOAD_CARGO, COLLECT_PAYMENT }
 
     data class Shipment(val kingdom: String, val resource: String, val quantity: Int, val expectedReward: Int)
@@ -17,6 +17,7 @@ class ShipmentCycleMachine {
         val reward: Int? = null,
         val contractVerified: Boolean = false,
         val cargoLoaded: Boolean = false,
+        val loadedQuantity: Int? = null,
         val departureAccepted: Boolean = false,
         val arrivalConfirmed: Boolean = false,
         val cargoUnloaded: Boolean = false,
@@ -29,6 +30,8 @@ class ShipmentCycleMachine {
     private var state = State.STOPPED
     private var userEnabled = false
     private var pending: Action? = null
+    private var pendingLoadBaseline: Int? = null
+    private var loadBaseline: Int? = null
     private var actionAtMs = 0L
     private var previousFingerprint: String? = null
     private var stableCount = 0
@@ -36,6 +39,7 @@ class ShipmentCycleMachine {
 
     fun stop() {
         shipment = null; state = State.STOPPED; userEnabled = false; pending = null
+        pendingLoadBaseline = null; loadBaseline = null
         previousFingerprint = null; stableCount = 0
     }
 
@@ -58,7 +62,7 @@ class ShipmentCycleMachine {
         }
         val fingerprint = listOf(value.screen, value.resource, value.quantity, value.kingdom,
             value.stockAvailable, value.shipCapacity, value.reward, value.contractVerified,
-            value.cargoLoaded, value.departureAccepted, value.arrivalConfirmed,
+            value.cargoLoaded, value.loadedQuantity, value.departureAccepted, value.arrivalConfirmed,
             value.cargoUnloaded, value.paymentCollected).joinToString("|")
         stableCount = if (fingerprint == previousFingerprint) stableCount + 1 else 1
         previousFingerprint = fingerprint
@@ -76,16 +80,31 @@ class ShipmentCycleMachine {
                 Action.OPEN_PORT
             }
             State.WAITING_FOR_LOAD -> {
-                if (value.screen != Screen.SHIP_LOADING || !cargoMatches() ||
-                    value.stockAvailable == null || value.stockAvailable < plan.quantity ||
+                val loaded = value.loadedQuantity
+                if (value.screen != Screen.SHIP_LOADING || !cargoMatches() || loaded == null ||
+                    loaded !in 0 until plan.quantity ||
+                    value.stockAvailable == null || value.stockAvailable < plan.quantity - loaded ||
                     value.shipCapacity == null || value.shipCapacity < plan.quantity)
                     return block("Chargement refusé : données ou stock incohérents")
+                pendingLoadBaseline = loaded
                 Action.LOAD_CARGO
             }
             State.WAITING_FOR_READY -> {
-                if (value.screen != Screen.SHIP_READY || !cargoMatches() || !value.cargoLoaded)
+                if (value.screen != Screen.SHIP_READY || !cargoMatches() || !value.cargoLoaded ||
+                    value.loadedQuantity != plan.quantity)
                     return block("Cargaison complète ou destination non confirmée")
                 Action.SEND_SHIP
+            }
+            State.VERIFYING_LOAD -> {
+                val baseline = loadBaseline ?: return block("Base de chargement absente")
+                val loaded = value.loadedQuantity
+                if (value.screen != Screen.SHIP_LOADING || !cargoMatches() || loaded == null ||
+                    loaded <= baseline || loaded > plan.quantity)
+                    return block("Aucune progression de chargement confirmée ; aucun nouvel essai")
+                state = if (loaded == plan.quantity) State.WAITING_FOR_READY else State.WAITING_FOR_LOAD
+                clearStability()
+                return Decision(state, reason = if (loaded == plan.quantity)
+                    "Quantité totale chargée confirmée" else "Chargement partiel confirmé ; la suite attend une nouvelle lecture")
             }
             State.VERIFYING_DEPARTURE -> {
                 if (value.screen == Screen.SHIP_SAILING && value.departureAccepted) {
@@ -133,7 +152,11 @@ class ShipmentCycleMachine {
         pending = null; clearStability()
         state = when (action) {
             Action.OPEN_PORT -> State.WAITING_FOR_LOAD
-            Action.LOAD_CARGO -> State.WAITING_FOR_READY
+            Action.LOAD_CARGO -> {
+                loadBaseline = pendingLoadBaseline
+                pendingLoadBaseline = null
+                State.VERIFYING_LOAD
+            }
             Action.SEND_SHIP -> State.VERIFYING_DEPARTURE
             Action.UNLOAD_CARGO -> State.VERIFYING_UNLOAD
             Action.COLLECT_PAYMENT -> State.VERIFYING_PAYMENT

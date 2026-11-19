@@ -8,7 +8,7 @@
 
 ---
 
-# Peasant King Assistant — v2.17 bêta
+# Peasant King Assistant — v2.18 bêta
 
 Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
 
@@ -85,3 +85,5 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 - Les valeurs visibles ne prouvent pas non plus les réservations de cargaisons d'autres navires. `VerifiedStockGate` rejette donc cette grille et le cycle automatique reste désactivé. Ce blocage est volontaire : aucune cargaison ne doit être chargée à partir d'une simple quantité OCR sans ressource confirmée.
 - La vidéo confirme visuellement une expédition manuelle (chargement, départ, arrivée, déchargement, paiement), mais elle ne valide pas l'exécution de ces gestes par l'application. Il faut encore calibrer la reconnaissance des piles sur l'écran réel, raccorder le service et le bouton Démarrer/Arrêter, puis vérifier le cycle sur le Galaxy S24 Ultra.
 - Le workflow actuel exécute les tests unitaires et `assembleDebug`. L'APK est installable mais signée debug ; une signature stable pour les mises à jour n'est pas encore configurée. Aucun secret ni clé privée n'est présent dans le dépôt.
+- Le visionnage image par image montre que le chargement filmé nécessite plusieurs gestes : le compteur progresse par paliers (par exemple `0/89`, puis un chargement partiel, puis `89/89`). La machine a été ajustée pour attendre la preuve OCR d'une hausse stricte avant de proposer un autre glissement. Si la quantité ne progresse pas ou dépasse la demande, elle bloque sans répéter le geste.
+- Ce changement est couvert par les tests de cycle, dont un chargement en deux paliers et le blocage sans progression. Il n'active pas encore de gestes en direct : la grille d'icônes et les quantités restent à reconnaître dans le service, et le pont n'est toujours pas branché à l'OCR temps réel.
