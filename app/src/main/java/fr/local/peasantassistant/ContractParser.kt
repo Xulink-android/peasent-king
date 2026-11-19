@@ -27,7 +27,16 @@ object ContractParser {
             line to n
         }
         val contracts = sends.map { (line, n) ->
-            val nearby = lines.filter { it !== line && abs(it.y - line.y) <= 15 && abs(it.x - line.x) <= 30 }
+            // Prevent adjacent contract columns from sharing a kingdom or resource.
+            // A candidate belongs only to its uniquely closest SEND column.
+            val nearby = lines.filter { candidate ->
+                if (candidate === line || abs(candidate.y - line.y) > 15 ||
+                    abs(candidate.x - line.x) > 30) return@filter false
+                val distances = sends.map { abs(candidate.x - it.first.x) }
+                val nearest = distances.minOrNull() ?: return@filter false
+                distances.count { it == nearest } == 1 &&
+                    abs(candidate.x - line.x) == nearest
+            }
             val kingdom = nearby.filter { it.y >= line.y && it.y <= line.y + 10 }
                 .filter { candidate ->
                     val value = candidate.text.trim()
