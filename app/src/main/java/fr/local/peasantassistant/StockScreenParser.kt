@@ -38,6 +38,7 @@ object StockScreenParser {
         val warnings = mutableListOf<String>()
         val supplies = mutableListOf<ShipmentPlanner.Supply>()
         val seen = mutableSetOf<String>()
+        val rejected = mutableSetOf<String>()
         var capacity: Int? = null
         var ships: Int? = null
         for (line in lines) {
@@ -53,11 +54,12 @@ object StockScreenParser {
                     continue
                 }
                 if (!seen.add(resource)) {
+                    rejected.add(resource)
                     supplies.removeAll { it.resource == resource }
                     warnings += "Doublon de stock : $resource"
                     continue
                 }
-                supplies += ShipmentPlanner.Supply(resource, amount, reserved)
+                if (resource !in rejected) supplies += ShipmentPlanner.Supply(resource, amount, reserved)
                 continue
             }
             capacityRow.matchEntire(value)?.let {
