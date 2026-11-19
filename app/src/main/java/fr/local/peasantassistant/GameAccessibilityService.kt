@@ -38,10 +38,11 @@ class GameAccessibilityService : AccessibilityService() {
     private var lastReport: String = ""
     private var currentPackage: String? = null
     private var capturing = false
+    private var panelDismissed = false
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        showPanel()
+        if (!panelDismissed) showPanel()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -98,7 +99,7 @@ class GameAccessibilityService : AccessibilityService() {
                 panel.visibility = View.INVISIBLE
                 ui.postDelayed({
                     inspect { message ->
-                        panel.visibility = View.VISIBLE
+                        if (!panelDismissed) panel.visibility = View.VISIBLE
                         status.text = message.take(3000)
                     }
                 }, 350)
@@ -116,8 +117,21 @@ class GameAccessibilityService : AccessibilityService() {
                 }
             }
         }
+        val close = Button(this).apply {
+            text = "X Fermer"
+            setOnClickListener {
+                panelDismissed = true
+                capturing = false
+                overlay?.let { view ->
+                    try { manager.removeView(view) } catch (_: Exception) { }
+                }
+                overlay = null
+                disableSelf()
+            }
+        }
         buttons.addView(analyze)
         buttons.addView(copy)
+        panel.addView(close)
         panel.addView(buttons)
         panel.addView(ScrollView(this).apply {
             addView(status)
