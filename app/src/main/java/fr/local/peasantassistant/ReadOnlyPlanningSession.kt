@@ -34,9 +34,10 @@ class ReadOnlyPlanningSession(private val maxAgeMs: Long = 30_000L) {
         return "Port confirmé : ${verified.supplies.size} ressources"
     }
 
-    fun proposal(nowMs: Long, contractScreenConfirmed: Boolean): ShipmentPlanner.Proposal? {
-        if (!contractScreenConfirmed) return null
+    fun proposal(nowMs: Long, currentStableContracts: List<ObservationGate.Snapshot>): ShipmentPlanner.Proposal? {
+        if (currentStableContracts.isEmpty()) return null
         val c = contracts ?: return null
+        if (currentStableContracts.sortedWith(compareBy({ it.kingdom }, { it.resource }, { it.amount })) != c.value) return null
         val p = port ?: return null
         if (nowMs < c.at || nowMs < p.at ||
             nowMs - c.at > maxAgeMs || nowMs - p.at > maxAgeMs) return null
