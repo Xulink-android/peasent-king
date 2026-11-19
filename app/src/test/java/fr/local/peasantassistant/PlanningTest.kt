@@ -126,6 +126,36 @@ class PlanningTest {
         assertEquals("Eastmere", result.contracts[0].kingdom)
         assertEquals("Gullhaven Isles", result.contracts[1].kingdom)
     }
+    @Test fun sendMustBeAnExactOcrLine() {
+        val result = ContractParser.parse(listOf(
+            ContractParser.Line("PROMO ENVOYER 95", 10, 39),
+            ContractParser.Line("ENVOYER 95 RESTANT", 10, 41),
+            ContractParser.Line("ENVOYER 95", 10, 43)
+        ))
+        assertEquals(1, result.contracts.size)
+        assertEquals(95, result.contracts.single().amount)
+    }
+
+    @Test fun resourceMatchingDoesNotUseWordFragments() {
+        val result = ContractParser.parse(listOf(
+            ContractParser.Line("CONTRAT", 8, 35),
+            ContractParser.Line("ENVOYER 95", 10, 39),
+            ContractParser.Line("Eastmere", 12, 41),
+            ContractParser.Line("charcoal", 12, 38)
+        ))
+        assertNull(result.contracts.single().resource)
+    }
+
+    @Test fun wholeWordResourceIsRecognized() {
+        val result = ContractParser.parse(listOf(
+            ContractParser.Line("CONTRAT", 8, 35),
+            ContractParser.Line("ENVOYER 95", 10, 39),
+            ContractParser.Line("Eastmere", 12, 41),
+            ContractParser.Line("CHARBON", 12, 38)
+        ))
+        assertEquals("coal", result.contracts.single().resource)
+    }
+
     @Test fun emptyTextNeverCreatesContracts() {
         assertTrue(ContractParser.parse(emptyList()).contracts.isEmpty())
     }
