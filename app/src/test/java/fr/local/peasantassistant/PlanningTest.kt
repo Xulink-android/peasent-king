@@ -59,6 +59,33 @@ class PlanningTest {
         val decision = StockPlanner.plan(StockPlanner.Stock("grain", 100, 90, 0, 200, 0, 80))
         assertEquals(10, decision.transfer)
     }
+    @Test fun shipmentPlannerDoesNotDoubleSpendStock() {
+        val plan = ShipmentPlanner.plan(
+            listOf(
+                ShipmentPlanner.Demand("Eastmere", "grain", 110),
+                ShipmentPlanner.Demand("Other", "grain", 104)
+            ),
+            listOf(ShipmentPlanner.Supply("grain", 150)),
+            shipCapacity = 200, maxShips = 2
+        )
+        assertEquals(1, plan.proposals.size)
+        assertEquals(104, plan.proposals.single().quantity)
+    }
+    @Test fun shipmentPlannerRejectsUnknownSupplyAndOvercapacity() {
+        val plan = ShipmentPlanner.plan(
+            listOf(ShipmentPlanner.Demand("Eastmere", "grain", 110)),
+            emptyList(), shipCapacity = 100, maxShips = 1
+        )
+        assertTrue(plan.proposals.isEmpty())
+    }
+    @Test fun shipmentPlannerRespectsReservations() {
+        val plan = ShipmentPlanner.plan(
+            listOf(ShipmentPlanner.Demand("Eastmere", "grain", 110)),
+            listOf(ShipmentPlanner.Supply("grain", 120, 30)),
+            shipCapacity = 150, maxShips = 1
+        )
+        assertTrue(plan.proposals.isEmpty())
+    }
     @Test fun emptyTextNeverCreatesContracts() {
         assertTrue(ContractParser.parse(emptyList()).contracts.isEmpty())
     }
