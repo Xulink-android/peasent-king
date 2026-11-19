@@ -30,7 +30,7 @@ class MainActivity : Activity() {
             textSize = 16f
             setPadding(0, 12, 0, 4)
         }
-        root.addView(label("Peasant King Assistant — v1.9 (simulation)"))
+        root.addView(label("Peasant King Assistant — v2.0 (simulation)"))
         root.addView(label(
             "Lecture OCR locale et simulation des contrats. " +
             "Aucun clic ni transfert automatique n'est effectué. " +
