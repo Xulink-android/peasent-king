@@ -5,10 +5,11 @@ import kotlin.math.abs
 /** Pure OCR interpretation; never guesses the resource from a quantity. */
 object ContractParser {
     data class Line(val text: String, val x: Int, val y: Int)
-    data class Contract(val kingdom: String?, val amount: Int, val y: Int, val resource: String?, val x: Int = -1)
+    data class Contract(val kingdom: String?, val amount: Int, val y: Int, val resource: String?, val x: Int = -1, val reward: Int? = null)
     data class Result(val contracts: List<Contract>, val warnings: List<String>, val context: String)
 
     private val send = Regex("""^(?:ENVOYER|SEND)\s+([0-9][0-9 .]*)\s*$""", RegexOption.IGNORE_CASE)
+    private val rewardLine = Regex("""^(?:GAGNER|EARN)\s+([0-9][0-9 .]*)\s*$""", RegexOption.IGNORE_CASE)
     private val resourceWords = linkedMapOf(
         "coal" to "coal", "charbon" to "coal",
         "grain" to "grain", "wheat" to "grain", "blé" to "grain",
@@ -50,7 +51,11 @@ object ContractParser {
                         .containsMatchIn(candidate.text)
                 }?.value
             }.distinct().singleOrNull()
-            Contract(kingdom, n, line.y, resource, line.x)
+            val reward = nearby.mapNotNull { candidate ->
+                rewardLine.matchEntire(candidate.text.trim())?.groupValues?.get(1)
+                    ?.filter { it.isDigit() }?.toIntOrNull()
+            }.distinct().singleOrNull()
+            Contract(kingdom, n, line.y, resource, line.x, reward)
         }
         val warnings = mutableListOf<String>()
         if (contracts.isEmpty()) warnings += "Aucune demande ENVOYER reconnue."

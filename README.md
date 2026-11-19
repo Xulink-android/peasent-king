@@ -71,3 +71,9 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 
 - Une machine déterministe couvre désormais le contrat, le chargement, l'envoi, la vérification du départ, l'arrivée, le déchargement et la collecte du paiement. Elle bloque les stocks insuffisants, les observations ambiguës, les gestes échoués et ne retente jamais un départ ou une collecte non confirmés.
 - La machine et le résolveur de gestes sont encore des composants testés séparément : ils ne sont pas encore orchestrés ensemble par le service d'accessibilité. L'APK ne réalise donc pas encore le cycle automatiquement.
+
+## v2.17 — liaison machine/cibles et preuve de récompense
+
+- Le contrat OCR transmet aussi la récompense au plan. La machine refuse de démarrer sans récompense connue et positive.
+- Un pont relie les décisions de cycle aux cibles OCR correspondantes et arrête le cycle si la cible visible est absente ou ambiguë. Il couvre l'ouverture du Port, le chargement, le départ, le déchargement et la collecte.
+- Le pont est validé par tests unitaires mais reste à brancher aux observations en direct du service. L'extraction automatique des stocks/réservations de la grille d'icônes est encore incomplète ; l'automatisation complète n'est donc pas activée.

@@ -6,7 +6,8 @@ import org.junit.Test
 class ObservedGameTargetResolverTest {
     private val good = ObservedGameTargetResolver.ShipmentEvidence(
         kingdom = "Eastmere", resource = "lumber", quantity = 89,
-        confirmedAvailable = 111, shipCapacity = 200, observedResource = "lumber", unambiguous = true
+        confirmedAvailable = 111, shipCapacity = 200, observedResource = "lumber", unambiguous = true,
+        expectedReward = 8
     )
 
     @Test fun destinationUsesExactVisibleButtonAndCompleteShipmentProof() {
@@ -66,10 +67,31 @@ class ObservedGameTargetResolverTest {
             ObservedGameTargetResolver.Box("Récupérer 8", 390, 1250, 690, 1320)
         )
         assertNotNull(ObservedGameTargetResolver.paymentTap(
-            GameScreenClassifier.Screen.COLLECT_PAYMENT, boxes, 1080, 2340, "Eastmere", 8))
+            GameScreenClassifier.Screen.COLLECT_PAYMENT, boxes, 1080, 2340, good))
         assertNull(ObservedGameTargetResolver.paymentTap(
-            GameScreenClassifier.Screen.COLLECT_PAYMENT, boxes, 1080, 2340, "Gullhaven Isles", 8))
+            GameScreenClassifier.Screen.COLLECT_PAYMENT, boxes, 1080, 2340,
+            good.copy(kingdom = "Gullhaven Isles")))
         assertNull(ObservedGameTargetResolver.paymentTap(
-            GameScreenClassifier.Screen.SHIPYARD, boxes, 1080, 2340, "Eastmere", 8))
+            GameScreenClassifier.Screen.SHIPYARD, boxes, 1080, 2340, good))
+    }
+
+    @Test fun unloadingUsesShipAndNamedWarehouseAnchorsAndRequiresResourceMatch() {
+        val boxes = listOf(
+            ObservedGameTargetResolver.Box("Highvale Star à Eastmere", 350, 630, 730, 675),
+            ObservedGameTargetResolver.Box("Tenez la cargaison, faites-la glisser vers le magasin, puis relâchez-la.", 130, 970, 950, 1045),
+            ObservedGameTargetResolver.Box("ENTREPÔT DU ROYAUME", 270, 1230, 810, 1290),
+            ObservedGameTargetResolver.Box("89 cargaison restante", 390, 1660, 700, 1705)
+        )
+        val target = ObservedGameTargetResolver.unloadCargoDrag(
+            GameScreenClassifier.Screen.UNLOAD_CARGO, boxes, 1080, 2340, good)
+        assertNotNull(target)
+        assertTrue(target!!.isDrag)
+        assertEquals(812, target.start.y)
+        assertEquals(1475, target.end.y)
+        assertNull(ObservedGameTargetResolver.unloadCargoDrag(
+            GameScreenClassifier.Screen.UNLOAD_CARGO, boxes, 1080, 2340,
+            good.copy(observedResource = "coal")))
+        assertNull(ObservedGameTargetResolver.unloadCargoDrag(
+            GameScreenClassifier.Screen.SHIPYARD, boxes, 1080, 2340, good))
     }
 }

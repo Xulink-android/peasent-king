@@ -49,7 +49,7 @@ class ReadOnlyPlanningSession(private val maxAgeMs: Long = 30_000L) {
         if (nowMs < c.at || nowMs < p.at ||
             nowMs - c.at > maxAgeMs || nowMs - p.at > maxAgeMs) return null
         return ShipmentPlanner.plan(
-            c.value.map { ShipmentPlanner.Demand(it.kingdom, it.resource, it.amount) },
+            c.value.map { ShipmentPlanner.Demand(it.kingdom, it.resource, it.amount, it.reward) },
             p.value.supplies, p.value.capacity, p.value.ships
         ).proposals.firstOrNull()
     }

@@ -54,7 +54,7 @@ class AutomationCoordinator {
         }
         val plan = ShipmentPlanner.plan(
             snapshot.stableContracts.map {
-                ShipmentPlanner.Demand(it.kingdom, it.resource, it.amount)
+                ShipmentPlanner.Demand(it.kingdom, it.resource, it.amount, it.reward)
             },
             snapshot.stocks,
             snapshot.shipCapacity,

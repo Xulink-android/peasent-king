@@ -10,8 +10,8 @@ android {
         applicationId = "fr.local.peasantassistant"
         minSdk = 32
         targetSdk = 34
-        versionCode = 36
-        versionName = "2.16-shipment-cycle-machine"
+        versionCode = 37
+        versionName = "2.17-verified-cycle-bridge"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

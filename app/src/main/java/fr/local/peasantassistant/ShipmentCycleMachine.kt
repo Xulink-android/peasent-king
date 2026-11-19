@@ -42,7 +42,7 @@ class ShipmentCycleMachine {
     fun start(plan: Shipment, userApproved: Boolean, nowMs: Long): Decision {
         stop()
         if (!userApproved || plan.kingdom.isBlank() || plan.resource.isBlank() ||
-            plan.quantity <= 0 || plan.expectedReward < 0 || nowMs < 0) return block("Plan ou accord utilisateur invalide")
+            plan.quantity <= 0 || plan.expectedReward <= 0 || nowMs < 0) return block("Plan ou accord utilisateur invalide")
         shipment = plan; userEnabled = true; state = State.WAITING_FOR_CONTRACT; lastTimeMs = nowMs
         return Decision(state, reason = "En attente du contrat et des stocks confirmés")
     }
@@ -147,4 +147,3 @@ class ShipmentCycleMachine {
         return Decision(state, reason = reason)
     }
 }
-

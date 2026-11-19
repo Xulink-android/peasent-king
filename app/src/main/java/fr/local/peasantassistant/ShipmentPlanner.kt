@@ -5,9 +5,9 @@ package fr.local.peasantassistant
  * All quantities must be verified independently before use.
  */
 object ShipmentPlanner {
-    data class Demand(val kingdom: String, val resource: String, val quantity: Int)
+    data class Demand(val kingdom: String, val resource: String, val quantity: Int, val expectedReward: Int? = null)
     data class Supply(val resource: String, val availableAtPort: Int, val reserved: Int = 0)
-    data class Proposal(val kingdom: String, val resource: String, val quantity: Int, val note: String)
+    data class Proposal(val kingdom: String, val resource: String, val quantity: Int, val note: String, val expectedReward: Int? = null)
     data class Plan(val proposals: List<Proposal>, val warnings: List<String>)
 
     fun plan(
@@ -18,7 +18,8 @@ object ShipmentPlanner {
     ): Plan {
         val warnings = mutableListOf<String>()
         if (shipCapacity <= 0 || maxShips <= 0 ||
-            demands.any { it.quantity <= 0 || it.kingdom.isBlank() || it.resource.isBlank() } ||
+            demands.any { it.quantity <= 0 || it.kingdom.isBlank() || it.resource.isBlank() ||
+                (it.expectedReward != null && it.expectedReward < 0) } ||
             supplies.any { it.availableAtPort < 0 || it.reserved < 0 ||
                 it.reserved > it.availableAtPort || it.resource.isBlank() } ||
             supplies.map { it.resource }.distinct().size != supplies.size ||
@@ -45,7 +46,7 @@ object ShipmentPlanner {
                 continue
             }
             proposals += Proposal(demand.kingdom, demand.resource, demand.quantity,
-                "Simulation : vérifier le navire et la destination avant tout envoi")
+                "Simulation : vérifier le navire et la destination avant tout envoi", demand.expectedReward)
             remaining[demand.resource] = stock - demand.quantity
         }
         return Plan(proposals, warnings)

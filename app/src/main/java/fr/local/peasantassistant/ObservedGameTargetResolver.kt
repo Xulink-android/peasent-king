@@ -19,7 +19,8 @@ object ObservedGameTargetResolver {
         val confirmedAvailable: Int?,
         val shipCapacity: Int?,
         val observedResource: String?,
-        val unambiguous: Boolean
+        val unambiguous: Boolean,
+        val expectedReward: Int? = null
     )
 
     private fun norm(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
@@ -74,15 +75,37 @@ object ObservedGameTargetResolver {
         boxes: List<Box>,
         width: Int,
         height: Int,
-        kingdom: String,
-        expectedPayment: Int
+        evidence: ShipmentEvidence
     ): Gesture? {
-        if (screen != GameScreenClassifier.Screen.COLLECT_PAYMENT || kingdom.isBlank() || expectedPayment <= 0) return null
-        val destinationSeen = boxes.any { norm(it.text).contains(norm(kingdom)) }
+        val expectedPayment = evidence.expectedReward ?: return null
+        if (screen != GameScreenClassifier.Screen.COLLECT_PAYMENT || evidence.kingdom.isBlank() || expectedPayment <= 0) return null
+        val destinationSeen = boxes.any { norm(it.text).contains(norm(evidence.kingdom)) }
         if (!destinationSeen) return null
         val expected = Regex("^RECUPERER\\s+${expectedPayment}(?:\\s.*)?$")
         val targets = boxes.filter { expected.matches(norm(it.text)) && it.valid(width, height) }
         return targets.singleOrNull()?.let { Gesture(Point(it.centerX, it.centerY), Point(it.centerX, it.centerY), false) }
+    }
+
+    /** Drag confirmed cargo from the arriving ship into the specifically named kingdom warehouse. */
+    fun unloadCargoDrag(
+        screen: GameScreenClassifier.Screen,
+        boxes: List<Box>,
+        width: Int,
+        height: Int,
+        evidence: ShipmentEvidence
+    ): Gesture? {
+        if (screen != GameScreenClassifier.Screen.UNLOAD_CARGO || !validPlan(evidence) ||
+            evidence.observedResource != evidence.resource) return null
+        val ship = boxes.singleOrNull { norm(it.text).contains(" A ${norm(evidence.kingdom)}") } ?: return null
+        val hint = boxes.singleOrNull { norm(it.text).contains("FAITES-LA GLISSER VERS LE MAGASIN") } ?: return null
+        val warehouse = boxes.singleOrNull { norm(it.text) == "ENTREPOT DU ROYAUME" } ?: return null
+        val remaining = boxes.singleOrNull { Regex("^[0-9]+ CARGAISON RESTANTE$").matches(norm(it.text)) } ?: return null
+        if (listOf(ship, hint, warehouse, remaining).any { !it.valid(width, height) } ||
+            ship.bottom >= hint.top || hint.bottom >= warehouse.top || warehouse.bottom >= remaining.top) return null
+        val source = Point(width / 2, (ship.bottom + hint.top) / 2)
+        val destination = Point(width / 2, (warehouse.bottom + remaining.top) / 2)
+        if (!inside(source, width, height) || !inside(destination, width, height)) return null
+        return Gesture(source, destination, true)
     }
 
     private fun validPlan(value: ShipmentEvidence) = value.unambiguous && value.kingdom.isNotBlank() &&
