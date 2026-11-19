@@ -354,6 +354,19 @@ class GameAccessibilityService : AccessibilityService() {
                                 }
                             }.count { it }
                         } else 0
+                        val iconMatches = detected.textBlocks.flatMap { it.lines }
+                            .filter { it.text.contains(Regex("ENVOYER|SEND", RegexOption.IGNORE_CASE)) }
+                            .mapNotNull { line ->
+                                val rect = line.boundingBox ?: return@mapNotNull null
+                                val crop = IconSamples.cropRightOfText(bitmap, rect)
+                                    ?: return@mapNotNull null
+                                try {
+                                    val label = IconLibrary.recognize(this@GameAccessibilityService, crop)
+                                    line.text.trim() to (label ?: "non reconnu")
+                                } finally {
+                                    crop.recycle()
+                                }
+                            }
                         val verdict = observationGate.observe(parsed)
                         val decision = automationCoordinator.evaluate(
                             AutomationCoordinator.Snapshot(
@@ -369,6 +382,9 @@ class GameAccessibilityService : AccessibilityService() {
                             appendLine("SIMULATION / INTERPRÉTATION")
                             appendLine(parsed.context)
                             appendLine("VÉRIFICATION : " + verdict.message)
+                            iconMatches.forEach { (contract, label) ->
+                                appendLine("ICÔNE CANDIDATE : $contract -> $label (diagnostic non validé)")
+                            }
                             appendLine("AUTOMATISATION : " + decision.phase + " — " + decision.explanation)
                             if (shouldCollect) appendLine("Candidats icônes enregistrés localement : $savedIcons")
                             if (shouldCollect) appendLine("Images non étiquetées : identification non garantie.")
