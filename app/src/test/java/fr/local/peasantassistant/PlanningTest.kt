@@ -86,6 +86,35 @@ class PlanningTest {
         )
         assertTrue(plan.proposals.isEmpty())
     }
+    @Test fun automationBlocksUnknownScreensAndMissingStocks() {
+        val coordinator = AutomationCoordinator()
+        val contract = ObservationGate.Snapshot("Eastmere", "grain", 95)
+        assertEquals(AutomationCoordinator.Phase.BLOCKED,
+            coordinator.evaluate(AutomationCoordinator.Snapshot("port", listOf(contract))).phase)
+        assertEquals(AutomationCoordinator.Phase.WAITING_FOR_STOCK,
+            coordinator.evaluate(AutomationCoordinator.Snapshot("contracts", listOf(contract))).phase)
+    }
+    @Test fun automationProposesButNeverExecutes() {
+        val coordinator = AutomationCoordinator()
+        val contract = ObservationGate.Snapshot("Eastmere", "grain", 95)
+        val stocks = listOf(ShipmentPlanner.Supply("grain", 100, 5))
+        val decision = coordinator.evaluate(AutomationCoordinator.Snapshot(
+            "contracts", listOf(contract), stocks, 120, 1
+        ))
+        assertEquals(AutomationCoordinator.Phase.READY_FOR_REVIEW, decision.phase)
+        assertEquals(95, decision.proposal?.quantity)
+    }
+    @Test fun automationRequiresRevalidationWhenContractChanges() {
+        val coordinator = AutomationCoordinator()
+        val stocks = listOf(ShipmentPlanner.Supply("grain", 200))
+        fun snapshot(amount: Int) = AutomationCoordinator.Snapshot(
+            "contracts", listOf(ObservationGate.Snapshot("Eastmere", "grain", amount)),
+            stocks, 200, 1
+        )
+        assertEquals(AutomationCoordinator.Phase.READY_FOR_REVIEW, coordinator.evaluate(snapshot(95)).phase)
+        assertEquals(AutomationCoordinator.Phase.WAITING_FOR_STABLE_CONTRACT,
+            coordinator.evaluate(snapshot(96)).phase)
+    }
     @Test fun emptyTextNeverCreatesContracts() {
         assertTrue(ContractParser.parse(emptyList()).contracts.isEmpty())
     }
