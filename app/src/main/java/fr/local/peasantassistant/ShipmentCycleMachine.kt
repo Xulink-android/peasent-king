@@ -2,7 +2,7 @@ package fr.local.peasantassistant
 
 /** Fail-closed lifecycle for one shipment, including arrival, unloading and payment collection. */
 class ShipmentCycleMachine {
-    enum class Screen { CONTRACTS, WORLD_MAP, SHIP_LOADING, SHIP_READY, SHIP_SAILING, UNLOAD_CARGO, PAYMENT_IN_TRANSIT, COLLECT_PAYMENT, UNKNOWN }
+    enum class Screen { CONTRACTS, WORLD_MAP, SHIPYARD, SHIP_LOADING, SHIP_READY, SHIP_SAILING, UNLOAD_CARGO, PAYMENT_IN_TRANSIT, COLLECT_PAYMENT, UNKNOWN }
     enum class State { STOPPED, WAITING_FOR_CONTRACT, WAITING_FOR_LOAD, WAITING_FOR_READY, VERIFYING_DEPARTURE, WAITING_FOR_ARRIVAL, VERIFYING_UNLOAD, WAITING_FOR_PAYMENT, VERIFYING_PAYMENT, COMPLETED, BLOCKED }
     enum class Action { OPEN_PORT, LOAD_CARGO, SEND_SHIP, UNLOAD_CARGO, COLLECT_PAYMENT }
 
@@ -147,3 +147,4 @@ class ShipmentCycleMachine {
         return Decision(state, reason = reason)
     }
 }
+
