@@ -16,11 +16,13 @@ object StockPlanner {
     fun plan(input: Stock): Decision {
         if (input.capacity <= 0 || input.inPort < 0 || input.inbound < 0 ||
             input.inRegion < 0 || input.regionalReserve < 0 || input.plannedShipLoad < 0 ||
-            input.inPort + input.inbound > input.capacity ||
+            input.inPort.toLong() + input.inbound.toLong() > input.capacity ||
             input.plannedShipLoad > input.inPort) {
             return Decision(input.resource, 0, "Données incohérentes : aucune action")
         }
-        val free = (input.capacity - (input.inPort - input.plannedShipLoad) - input.inbound).coerceAtLeast(0)
+        // Planned ship cargo remains in the warehouse until departure.
+        val free = (input.capacity.toLong() - input.inPort - input.inbound)
+            .coerceAtLeast(0).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
         val available = (input.inRegion - input.regionalReserve).coerceAtLeast(0)
         val transfer = minOf(free, available)
         return Decision(input.resource, transfer,
