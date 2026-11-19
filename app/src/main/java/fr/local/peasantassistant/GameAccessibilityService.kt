@@ -37,6 +37,7 @@ class GameAccessibilityService : AccessibilityService() {
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     private val observationGate = ObservationGate()
     private val verifiedStockGate = VerifiedStockGate()
+    private val planningSession = ReadOnlyPlanningSession()
     private val automationCoordinator = AutomationCoordinator()
     private var overlay: View? = null
     private var lastReport: String = ""
@@ -68,6 +69,7 @@ class GameAccessibilityService : AccessibilityService() {
             collectIconSamples = false
             observationGate.reset()
             verifiedStockGate.reset()
+            planningSession.reset()
             automationCoordinator.reset()
             ui.removeCallbacks(scanLoop)
             overlay?.visibility = View.GONE
@@ -92,6 +94,7 @@ class GameAccessibilityService : AccessibilityService() {
         autoScan = false
         observationGate.reset()
         verifiedStockGate.reset()
+        planningSession.reset()
         automationCoordinator.reset()
         ui.removeCallbacksAndMessages(null)
         recognizer.close()
@@ -410,6 +413,17 @@ class GameAccessibilityService : AccessibilityService() {
                             parsed.context == "Écran de stocks probable", stockObservation
                         )
                         val verdict = observationGate.observe(parsed)
+                        val observationTime = android.os.SystemClock.elapsedRealtime()
+                        if (parsed.context == "Écran de contrats probable") {
+                            planningSession.observeContracts(verdict.stable, observationTime)
+                        }
+                        if (parsed.context == "Écran de stocks probable") {
+                            planningSession.observePort(verifiedStock, observationTime)
+                        }
+                        val suggestedShipment = planningSession.proposal(
+                            observationTime,
+                            if (parsed.context == "Écran de contrats probable") verdict.stable else emptyList()
+                        )
                         val decision = automationCoordinator.evaluate(
                             AutomationCoordinator.Snapshot(
                                 if (parsed.context == "Écran de contrats probable") "contracts" else "unknown",
@@ -428,6 +442,9 @@ class GameAccessibilityService : AccessibilityService() {
                                 appendLine("ICÔNE CANDIDATE : $contract -> $label (diagnostic non validé)")
                             }
                             appendLine("AUTOMATISATION : " + decision.phase + " — " + decision.explanation)
+                            appendLine("PLAN MULTI-ÉCRANS : " + (suggestedShipment?.let {
+                                "${it.kingdom} / ${it.resource} / ${it.quantity} (simulation uniquement)"
+                            } ?: "attente de contrats et stocks confirmés, récents"))
                             appendLine("LECTURE PORT (expérimentale, sans action) :")
                             appendLine(if (verifiedStock == null) {
                                 "Stock non confirmé : aucune proposition d'expédition"
