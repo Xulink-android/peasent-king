@@ -16,7 +16,9 @@ object ContractParser {
         "potatoes" to "potatoes", "pomme de terre" to "potatoes",
         "lumber" to "lumber", "wood" to "lumber", "bois" to "lumber",
         "cocoa" to "cocoa", "cacao" to "cocoa",
-        "silk" to "silk", "soie" to "silk"
+        "silk" to "silk", "soie" to "silk",
+        "arms" to "arms", "weapon" to "arms", "weapons" to "arms",
+        "sword" to "arms", "swords" to "arms", "arme" to "arms", "armes" to "arms"
     )
     private val excluded = setOf("CONTRAT", "ACCEPTER", "GAGNER", "PORT", "MARCHÉ", "MARCHE", "FERME", "TERRE", "MER", "MONDE", "ROYAUME", "DOMAINE", "AD")
     fun parse(lines: List<Line>): Result {

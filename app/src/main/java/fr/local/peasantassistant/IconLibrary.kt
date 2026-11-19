@@ -9,7 +9,7 @@ import org.json.JSONObject
  * A visual match is diagnostic only and must not authorize gestures.
  */
 object IconLibrary {
-    val labels = listOf("coal", "grain", "potatoes", "lumber", "cocoa", "silk")
+    val labels = listOf("coal", "grain", "potatoes", "lumber", "cocoa", "silk", "arms")
     private const val PREFS = "icon_training_v1"
 
     fun save(context: Context, label: String, bitmap: Bitmap): Boolean {

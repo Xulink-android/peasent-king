@@ -14,7 +14,7 @@ object StockScreenParser {
     )
 
     private val stockRow = Regex(
-        """^(?:PORT|STOCK|ENTREPOT|ENTREPÔT)\s*[:\-]?\s*(CHARBON|COAL|BLE|BLÉ|GRAIN|WHEAT|BOIS|WOOD|LUMBER|SOIE|SILK|CACAO|COCOA|POTATOES|POMMES DE TERRE)\s*[:\-]?\s*([0-9][0-9 ]*)\s*(?:[/|]\s*RESERVE(?:S)?\s*[:\-]?\s*([0-9][0-9 ]*))?$""",
+        """^(?:PORT|STOCK|ENTREPOT|ENTREPÔT)\s*[:\-]?\s*(CHARBON|COAL|BLE|BLÉ|GRAIN|WHEAT|BOIS|WOOD|LUMBER|SOIE|SILK|CACAO|COCOA|ARME|ARMES|WEAPON|WEAPONS|SWORD|SWORDS|POTATOES|POMMES DE TERRE)\s*[:\-]?\s*([0-9][0-9 ]*)\s*(?:[/|]\s*RESERVE(?:S)?\s*[:\-]?\s*([0-9][0-9 ]*))?$""",
         RegexOption.IGNORE_CASE
     )
     private val capacityRow = Regex(
@@ -31,6 +31,8 @@ object StockScreenParser {
         "BOIS" to "lumber", "WOOD" to "lumber", "LUMBER" to "lumber",
         "SOIE" to "silk", "SILK" to "silk",
         "CACAO" to "cocoa", "COCOA" to "cocoa",
+        "ARME" to "arms", "ARMES" to "arms", "WEAPON" to "arms", "WEAPONS" to "arms",
+        "SWORD" to "arms", "SWORDS" to "arms",
         "POTATOES" to "potatoes", "POMMES DE TERRE" to "potatoes"
     )
 
