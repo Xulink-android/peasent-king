@@ -643,7 +643,7 @@ class GameAccessibilityService : AccessibilityService() {
                     scanPending = false
                     if (!panelDismissed) {
                         panelView?.visibility = View.VISIBLE
-                        scanStatus?.text = "Navigation vérifiée par OCR : consulte le rapport. " + message.take(90)
+                        scanStatus?.text = "Contrôle OCR après geste (résultat à confirmer) : " + message.take(90)
                     }
                 }
             }, 350)
