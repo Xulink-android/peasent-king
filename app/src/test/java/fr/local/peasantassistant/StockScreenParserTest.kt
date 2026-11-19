@@ -36,6 +36,34 @@ class StockScreenParserTest {
         assertTrue(result.supplies.isEmpty())
     }
 
+    @Test fun repeatedCapacityNeverRecoversOnThirdLine() {
+        val result = StockScreenParser.parse(listOf(
+            "PORT COAL 100 / RESERVE 0",
+            "CAPACITÉ 200", "CAPACITÉ 200", "CAPACITÉ 200",
+            "NAVIRES DISPONIBLES 2"
+        ))
+        assertNull(result.shipCapacity)
+    }
+
+    @Test fun repeatedShipsNeverRecoversOnThirdLine() {
+        val result = StockScreenParser.parse(listOf(
+            "PORT COAL 100 / RESERVE 0",
+            "CAPACITÉ 200",
+            "NAVIRES DISPONIBLES 2", "NAVIRES DISPONIBLES 2", "NAVIRES DISPONIBLES 2"
+        ))
+        assertNull(result.availableShips)
+    }
+
+    @Test fun malformedFirstStockRowCannotBeReplacedByLaterRow() {
+        val result = StockScreenParser.parse(listOf(
+            "PORT COAL 100",
+            "PORT COAL 100 / RESERVE 0",
+            "CAPACITÉ 200",
+            "NAVIRES DISPONIBLES 2"
+        ))
+        assertTrue(result.supplies.isEmpty())
+    }
+
     @Test fun invalidReservedAmountIsRejected() {
         val result = StockScreenParser.parse(listOf("PORT COAL 100 / RESERVE 150"))
         assertTrue(result.supplies.isEmpty())
