@@ -10,6 +10,7 @@ object ShipmentScreenEvidenceParser {
     data class Evidence(
         val loadedQuantity: Int? = null,
         val requestedQuantity: Int? = null,
+        val remainingCargo: Int? = null,
         val shipCapacity: Int? = null,
         val reward: Int? = null,
         val kingdom: String? = null,
@@ -75,6 +76,11 @@ object ShipmentScreenEvidenceParser {
                 .matchEntire(line)?.groupValues?.get(1)?.replace(" ", "")?.toIntOrNull()
                 ?.takeIf { it > 0 }
         }
+        val remainingCargoValues = normalized.mapNotNull { line ->
+            Regex("""^([0-9][0-9 ]*) CARGAISON RESTANTE$""")
+                .matchEntire(line)?.groupValues?.get(1)?.replace(" ", "")?.toIntOrNull()
+                ?.takeIf { it > 0 }
+        }
         val destinations = lines.mapNotNull { raw ->
             val line = raw.trim()
             Regex("""^NAVIGUEZ VERS\s+(.+)$""", RegexOption.IGNORE_CASE)
@@ -86,6 +92,7 @@ object ShipmentScreenEvidenceParser {
         return Evidence(
             loadedQuantity = progress.singleOrNull()?.first,
             requestedQuantity = progress.singleOrNull()?.second,
+            remainingCargo = uniqueInt(remainingCargoValues, "cargaison restante", warnings),
             shipCapacity = uniqueInt(capacities, "capacité", warnings),
             reward = uniqueInt(rewards, "récompense", warnings),
             kingdom = uniqueText(destinations, "destination", warnings),

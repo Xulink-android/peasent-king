@@ -16,28 +16,33 @@ class ObservedGameTargetResolverTest {
             ObservedGameTargetResolver.Box("Naviguez vers Eastmere", 365, 1248, 744, 1335)
         )
         val target = ObservedGameTargetResolver.destinationTap(
-            GameScreenClassifier.Screen.SHIP_READY_TO_SAIL, boxes, 1080, 2340, good)
+            GameScreenClassifier.Screen.SHIP_READY_TO_SAIL, boxes, 1080, 2340,
+            good.copy(confirmedAvailable = 22, loadedQuantity = 89))
         assertNotNull(target)
         assertEquals(554, target!!.start.x)
         assertEquals(1291, target.start.y)
     }
 
     @Test fun destinationFailsClosedForWrongResourceQuantityScreenOrDuplicateButton() {
+        val loaded = good.copy(loadedQuantity = 89)
         val boxes = listOf(
             ObservedGameTargetResolver.Box("ENVOYER 89/89", 620, 800, 900, 850),
             ObservedGameTargetResolver.Box("Naviguez vers Eastmere", 365, 1248, 744, 1335)
         )
         assertNull(ObservedGameTargetResolver.destinationTap(
             GameScreenClassifier.Screen.SHIP_READY_TO_SAIL, boxes, 1080, 2340,
-            good.copy(observedResource = "coal")))
+            loaded.copy(observedResource = "coal")))
         assertNull(ObservedGameTargetResolver.destinationTap(
             GameScreenClassifier.Screen.SHIP_READY_TO_SAIL, boxes, 1080, 2340,
-            good.copy(confirmedAvailable = 88)))
+            loaded.copy(shipCapacity = 88)))
+        assertNotNull(ObservedGameTargetResolver.destinationTap(
+            GameScreenClassifier.Screen.SHIP_READY_TO_SAIL, boxes, 1080, 2340,
+            good.copy(confirmedAvailable = 22, loadedQuantity = 89)))
         assertNull(ObservedGameTargetResolver.destinationTap(
             GameScreenClassifier.Screen.SHIP_LOADING, boxes, 1080, 2340, good))
         assertNull(ObservedGameTargetResolver.destinationTap(
             GameScreenClassifier.Screen.SHIP_READY_TO_SAIL,
-            boxes + boxes.last(), 1080, 2340, good))
+            boxes + boxes.last(), 1080, 2340, loaded))
     }
 
     @Test fun loadingRequiresVerifiedResourceStockAndCapacity() {

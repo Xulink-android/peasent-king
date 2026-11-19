@@ -24,9 +24,11 @@ class ShipmentScreenEvidenceParserTest {
     @Test fun acceptsObservedArrivalAndPaymentLabelsWithoutInferringSuccess() {
         val evidence = ShipmentScreenEvidenceParser.parse(listOf(
             "Highvale Star à Eastmere",
+            "89 cargaison restante",
             "Récupérer 8"
         ))
         assertEquals("Eastmere", evidence.kingdom)
+        assertEquals(89, evidence.remainingCargo)
         assertEquals(8, evidence.paymentAmount)
         assertNull(evidence.loadedQuantity)
     }

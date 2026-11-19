@@ -35,8 +35,8 @@ object ObservedGameTargetResolver {
         evidence: ShipmentEvidence
     ): Gesture? {
         if (screen != GameScreenClassifier.Screen.SHIP_READY_TO_SAIL || !validPlan(evidence) ||
-            evidence.confirmedAvailable!! < evidence.quantity || evidence.shipCapacity!! < evidence.quantity ||
-            evidence.observedResource != evidence.resource) return null
+            evidence.shipCapacity!! < evidence.quantity || evidence.observedResource != evidence.resource ||
+            evidence.loadedQuantity != evidence.quantity) return null
         val exactCargo = Regex("^ENVOYER\\s+${evidence.quantity}/${evidence.quantity}(?:\\s.*)?$")
         if (boxes.none { exactCargo.matches(norm(it.text)) }) return null
         val expected = norm("Naviguez vers ${evidence.kingdom}")
