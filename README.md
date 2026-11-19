@@ -1,4 +1,4 @@
-# Peasant King Assistant — v1.5 experimental
+# Peasant King Assistant — v1.6 experimental
 
 Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
 
@@ -7,12 +7,12 @@ Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **
 - Panneau flottant avec **Analyser**, **Copier rapport**, **Suivi ON/OFF**, **Réduire**, **X Fermer** et déplacement par glissement sur le fond.
 - Suivi OCR facultatif toutes les 5 secondes (uniquement quand le jeu est au premier plan).
 - Interprétation **indicative** des quantités « ENVOYER N » et du contexte de l'écran.
-- Planificateur Kotlin de transferts régions → port, avec contrôle de capacité, arrivages, réserve régionale et chargement prévu.
+- Calculateur de transferts régions → port accessible depuis l'écran principal, avec saisie manuelle, contrôle de capacité, arrivages et réserve régionale. Les cargaisons réservées restent comptées dans le stock jusqu'au départ réel.
 - Tests unitaires du parseur et du planificateur exécutés par GitHub Actions avant compilation.
 
 ## Limitations essentielles
 **Aucun chargement, transfert, clic ou envoi automatique n'est activé.**
-Les contrats affichent des **icônes** de marchandises : l'OCR seul ne permet pas d'en déduire la ressource. L'application refuse de deviner une ressource ou un stock. Le planificateur n'est pas encore alimenté par les valeurs réelles du jeu. L'analyse des contrats est une simulation/diagnostic et non un bot complet.
+Les contrats affichent des **icônes** de marchandises : l'OCR seul ne permet pas d'en déduire la ressource. L'application refuse de deviner une ressource ou un stock. Le planificateur n'est pas encore alimenté automatiquement par les valeurs réelles du jeu : il faut les saisir dans l'application. L'analyse des contrats est une simulation/diagnostic et non un bot complet.
 
 ## APK
 Dans **Actions → Build Android APK → dernier build vert → Artifacts**, télécharger `PeasantKingAssistant-debug-apk`, décompresser puis installer `app-debug.apk`.
