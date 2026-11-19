@@ -479,6 +479,9 @@ class GameAccessibilityService : AccessibilityService() {
                         val parsed = ContractIconLinker.annotate(
                             parsedFromText, iconMatches.map { it.third }
                         )
+                        val gameScreen = GameScreenClassifier.classify(
+                            detected.textBlocks.flatMap { it.lines }.map { it.text.trim() }
+                        )
                         val stockObservation = StockScreenParser.parse(
                             detected.textBlocks.flatMap { it.lines }.map { it.text.trim() }
                         )
@@ -513,6 +516,9 @@ class GameAccessibilityService : AccessibilityService() {
                             appendLine("Écran : $width x $height")
                             appendLine("Textes détectés : ${lines.size}")
                             lines.forEach { appendLine(it) }
+                            appendLine("PHASE OBSERVÉE : " + gameScreen.screen)
+                            appendLine("INDICES : " + gameScreen.evidence.joinToString(" ; "))
+                            appendLine("Prudence : identification expérimentale issue des captures, aucune expédition déclenchée.")
                             appendLine("SIMULATION / INTERPRÉTATION")
                             appendLine(parsed.context)
                             appendLine("VÉRIFICATION : " + verdict.message)
