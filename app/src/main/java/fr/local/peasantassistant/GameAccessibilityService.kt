@@ -349,6 +349,8 @@ class GameAccessibilityService : AccessibilityService() {
                     .addOnSuccessListener { detected ->
                         if (!isGameVisible()) {
                             observationGate.reset()
+                            verifiedStockGate.reset()
+                            planningSession.reset()
                             automationCoordinator.reset()
                             ui.post {
                                 capturing = false
@@ -419,6 +421,11 @@ class GameAccessibilityService : AccessibilityService() {
                         }
                         if (parsed.context == "Écran de stocks probable") {
                             planningSession.observePort(verifiedStock, observationTime)
+                        }
+                        if (parsed.context == "Écran non identifié") {
+                            planningSession.reset()
+                            observationGate.reset()
+                            verifiedStockGate.reset()
                         }
                         val suggestedShipment = planningSession.proposal(
                             observationTime,
