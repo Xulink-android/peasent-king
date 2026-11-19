@@ -122,10 +122,10 @@ class GameAccessibilityService : AccessibilityService() {
             setOnClickListener {
                 panelDismissed = true
                 capturing = false
-                overlay?.let { view ->
+                this@GameAccessibilityService.overlay?.let { view ->
                     try { manager.removeView(view) } catch (_: Exception) { }
                 }
-                overlay = null
+                this@GameAccessibilityService.overlay = null
                 disableSelf()
             }
         }
