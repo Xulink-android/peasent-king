@@ -13,10 +13,10 @@ import kotlin.math.abs
 object IconSamples {
     data class Candidate(val x: Int, val y: Int, val width: Int, val height: Int)
 
-    fun cropLeftOfText(bitmap: Bitmap, textBounds: android.graphics.Rect): Bitmap? {
+    fun cropRightOfText(bitmap: Bitmap, textBounds: android.graphics.Rect): Bitmap? {
         val size = (textBounds.height() * 1.6f).toInt().coerceIn(28, 160)
-        val right = (textBounds.left - size / 5).coerceAtMost(bitmap.width)
-        val left = (right - size).coerceAtLeast(0)
+        val left = (textBounds.right + size / 8).coerceIn(0, bitmap.width)
+        val right = (left + size).coerceAtMost(bitmap.width)
         val top = (textBounds.centerY() - size / 2).coerceAtLeast(0)
         val w = (right - left).coerceAtMost(bitmap.width - left)
         val h = size.coerceAtMost(bitmap.height - top)
