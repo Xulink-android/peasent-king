@@ -24,7 +24,7 @@ class MainActivity : Activity() {
             textSize = 16f
             setPadding(0, 12, 0, 4)
         }
-        root.addView(label("Peasant King Assistant — v1.6 (simulation)"))
+        root.addView(label("Peasant King Assistant — v1.7 (simulation)"))
         root.addView(label(
             "Lecture OCR locale et simulation des contrats. " +
             "Aucun clic ni transfert automatique n'est effectué. " +
@@ -78,6 +78,41 @@ class MainActivity : Activity() {
             "Il utilise exclusivement les chiffres saisis. Les marchandises réservées " +
             "pour un navire occupent toujours de la place jusqu'à son départ réel."
         ))
+        root.addView(label("Simulation de contrat et de chargement (saisie manuelle)"))
+        val kingdom = EditText(this).apply { hint = "Royaume destinataire" }
+        val shipResource = EditText(this).apply { hint = "Ressource demandée" }
+        root.addView(kingdom)
+        root.addView(shipResource)
+        val demand = number("Quantité du contrat", "110")
+        val shipCapacity = number("Capacité du navire", "200")
+        val ships = number("Nombre de navires disponibles", "1")
+        val reserved = number("Stock déjà réservé au port", "0")
+        val shipResult = label("Aucune expédition simulée")
+        root.addView(Button(this).apply {
+            text = "Simuler une expédition sans envoyer"
+            setOnClickListener {
+                val values = listOf(demand, shipCapacity, ships, reserved, inPort)
+                    .map { it.text.toString().toIntOrNull() }
+                if (values.any { it == null } || kingdom.text.isBlank() || shipResource.text.isBlank()) {
+                    shipResult.text = "Complète tous les champs et les quantités."
+                    return@setOnClickListener
+                }
+                val v = values.map { it!! }
+                val plan = ShipmentPlanner.plan(
+                    listOf(ShipmentPlanner.Demand(kingdom.text.toString(), shipResource.text.toString(), v[0])),
+                    listOf(ShipmentPlanner.Supply(shipResource.text.toString(), v[4], v[3])),
+                    v[1], v[2]
+                )
+                shipResult.text = if (plan.proposals.isEmpty()) {
+                    "Aucun envoi proposé. " + plan.warnings.joinToString("; ")
+                } else {
+                    "Proposition : " + plan.proposals.joinToString { proposal ->
+                        proposal.quantity.toString() + " " + proposal.resource + " vers " + proposal.kingdom
+                    } + ". Aucune action effectuée dans le jeu."
+                }
+            }
+        })
+        root.addView(shipResult)
         setContentView(ScrollView(this).apply { addView(root) })
     }
 }
