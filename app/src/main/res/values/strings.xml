@@ -1,3 +1,3 @@
 <resources>
-    <string name="service_description">Analyse locale en lecture seule du texte affiché dans Peasant to King. Demande une capture d'écran par action et ne réalise aucun clic automatique.</string>
+    <string name="service_description">Lecture locale des textes visibles dans Peasant to King. Capture manuelle uniquement. Aucun clic automatique.</string>
 </resources>
