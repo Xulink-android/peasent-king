@@ -41,6 +41,8 @@ object StockScreenParser {
         val rejected = mutableSetOf<String>()
         var capacity: Int? = null
         var ships: Int? = null
+        var capacitySeen = false
+        var shipsSeen = false
         for (line in lines) {
             val value = line.trim().replace(Regex("""\s+"""), " ")
             val match = stockRow.matchEntire(value)
@@ -49,14 +51,15 @@ object StockScreenParser {
                 val amount = match.groupValues[2].replace(" ", "").toIntOrNull()
                 val reserveText = match.groupValues[3]
                 val reserved = if (reserveText.isBlank()) null else reserveText.replace(" ", "").toIntOrNull()
-                if (amount == null || amount < 0 || reserved == null || reserved < 0 || reserved > amount) {
-                    warnings += "Stock ou réserve non vérifié : $resource"
-                    continue
-                }
                 if (!seen.add(resource)) {
                     rejected.add(resource)
                     supplies.removeAll { it.resource == resource }
                     warnings += "Doublon de stock : $resource"
+                    continue
+                }
+                if (amount == null || amount < 0 || reserved == null || reserved < 0 || reserved > amount) {
+                    rejected.add(resource)
+                    warnings += "Stock ou réserve non vérifié : $resource"
                     continue
                 }
                 if (resource !in rejected) supplies += ShipmentPlanner.Supply(resource, amount, reserved)
@@ -64,17 +67,19 @@ object StockScreenParser {
             }
             capacityRow.matchEntire(value)?.let {
                 val n = it.groupValues[1].replace(" ", "").toIntOrNull()
-                if (capacity != null || n == null || n <= 0) {
+                if (capacitySeen || n == null || n <= 0) {
                     capacity = null
                     warnings += "Capacité ambiguë"
                 } else capacity = n
+                capacitySeen = true
             }
             shipsRow.matchEntire(value)?.let {
                 val n = it.groupValues[1].replace(" ", "").toIntOrNull()
-                if (ships != null || n == null || n < 0) {
+                if (shipsSeen || n == null || n < 0) {
                     ships = null
                     warnings += "Navires ambigus"
                 } else ships = n
+                shipsSeen = true
             }
         }
         if (supplies.isEmpty()) warnings += "Aucun stock de port avec réserve explicite"
