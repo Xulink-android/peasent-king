@@ -1,10 +1,12 @@
 package fr.local.peasantassistant
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.GestureDescription
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Path
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
@@ -24,8 +26,9 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.util.concurrent.Executors
 
 /**
- * Read-only screen inspector. Never sends touches or edits game data.
- * Accessibility screenshots require explicit user consent in Android settings.
+ * Screen inspector with one optional, user-initiated Port navigation gesture.
+ * It cannot send cargo, accept a contract or edit game data.
+ * Accessibility is enabled only through Android's normal consent UI.
  */
 class GameAccessibilityService : AccessibilityService() {
     companion object {
@@ -39,6 +42,7 @@ class GameAccessibilityService : AccessibilityService() {
     private val verifiedStockGate = VerifiedStockGate()
     private val planningSession = ReadOnlyPlanningSession()
     private val automationCoordinator = AutomationCoordinator()
+    private val portTargetGate = PortTargetGate()
     private var overlay: View? = null
     private var lastReport: String = ""
     private var currentPackage: String? = null
@@ -50,6 +54,8 @@ class GameAccessibilityService : AccessibilityService() {
     private var scanPending = false
     private var scanStatus: TextView? = null
     private var collectIconSamples = false
+    private var portNavigationArmed = false
+    private var portVerificationPending = false
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -67,6 +73,9 @@ class GameAccessibilityService : AccessibilityService() {
             autoScan = false
             scanPending = false
             collectIconSamples = false
+            portNavigationArmed = false
+            portVerificationPending = false
+            portTargetGate.reset()
             observationGate.reset()
             verifiedStockGate.reset()
             planningSession.reset()
@@ -82,7 +91,13 @@ class GameAccessibilityService : AccessibilityService() {
         }
     }
 
-    override fun onInterrupt() { /* No ongoing gestures to interrupt */ }
+    override fun onInterrupt() {
+        portNavigationArmed = false
+        portVerificationPending = false
+        portTargetGate.reset()
+        autoScan = false
+        ui.removeCallbacks(scanLoop)
+    }
 
     override fun onDestroy() {
         overlay?.let {
@@ -92,6 +107,9 @@ class GameAccessibilityService : AccessibilityService() {
         }
         overlay = null
         autoScan = false
+        portNavigationArmed = false
+        portVerificationPending = false
+        portTargetGate.reset()
         observationGate.reset()
         verifiedStockGate.reset()
         planningSession.reset()
@@ -166,6 +184,9 @@ class GameAccessibilityService : AccessibilityService() {
             text = "X Masquer"
             setOnClickListener {
                 panelDismissed = true
+                portNavigationArmed = false
+                portVerificationPending = false
+                portTargetGate.reset()
                 autoScan = false
                 scanPending = false
                 ui.removeCallbacksAndMessages(null)
@@ -177,6 +198,8 @@ class GameAccessibilityService : AccessibilityService() {
                 panelView = null
                 scanStatus = null
                 observationGate.reset()
+                verifiedStockGate.reset()
+                planningSession.reset()
                 automationCoordinator.reset()
                 // Hide the panel without revoking the Android authorization.
             }
@@ -194,6 +217,8 @@ class GameAccessibilityService : AccessibilityService() {
             setOnClickListener {
                 autoScan = !autoScan
                 if (!autoScan) {
+                    portNavigationArmed = false
+                    portTargetGate.reset()
                     ui.removeCallbacks(scanLoop)
                     observationGate.reset()
                     automationCoordinator.reset()
@@ -225,10 +250,32 @@ class GameAccessibilityService : AccessibilityService() {
                 }, 350)
             }
         }
+        val openPort = Button(this).apply {
+            text = "Auto Port (1 fois)"
+            setOnClickListener {
+                if (!isGameVisible()) {
+                    status.text = "Ouvre le jeu pour autoriser la navigation vers Port."
+                    return@setOnClickListener
+                }
+                portNavigationArmed = !portNavigationArmed
+                portTargetGate.reset()
+                if (portNavigationArmed) {
+                    autoScan = true
+                    repeat.text = "Suivi ON"
+                    ui.removeCallbacks(scanLoop)
+                    ui.post(scanLoop)
+                    status.text = "Navigation Port armée : trois reconnaissances OCR identiques requises. Un seul geste au maximum."
+                } else {
+                    status.text = "Navigation Port annulée."
+                }
+                text = if (portNavigationArmed) "Annuler Auto Port" else "Auto Port (1 fois)"
+            }
+        }
         buttons.addView(analyze)
         buttons.addView(icons)
         buttons.addView(copy)
         buttons.addView(repeat)
+        panel.addView(openPort)
         panel.addView(collapse)
         panel.addView(close)
         panel.addView(buttons)
@@ -408,6 +455,19 @@ class GameAccessibilityService : AccessibilityService() {
                                     crop.recycle()
                                 }
                             }
+                        val pixelBoxes = detected.textBlocks.flatMap { it.lines }
+                            .mapNotNull { line ->
+                                val rect = line.boundingBox ?: return@mapNotNull null
+                                SafePortNavigator.TextBox(line.text.trim(), rect.left, rect.top,
+                                    rect.right, rect.bottom)
+                            }
+                        val portTarget = SafePortNavigator.detect(pixelBoxes, width, height)
+                        val stablePortTarget = if (portNavigationArmed) {
+                            portTargetGate.observe(portTarget)
+                        } else null
+                        val observedAtMs = android.os.SystemClock.elapsedRealtime()
+                        val verificationWasPending = portVerificationPending
+                        if (verificationWasPending) portVerificationPending = false
                         val stockObservation = StockScreenParser.parse(
                             detected.textBlocks.flatMap { it.lines }.map { it.text.trim() }
                         )
@@ -470,7 +530,17 @@ class GameAccessibilityService : AccessibilityService() {
                                     ", quantité=" + contract.amount + ", ressource=" + (contract.resource ?: "inconnue"))
                             }
                             parsed.warnings.forEach { appendLine("Attention : " + it) }
-                            appendLine("Actions autorisées : aucune (diagnostic uniquement).")
+                            appendLine("Navigation Port : " + when {
+                                verificationWasPending && portTarget != null ->
+                                    "Le bouton Port est toujours visible : navigation non confirmée"
+                                verificationWasPending ->
+                                    "Bouton Port non retrouvé ; transition possible, à confirmer dans le jeu"
+                                portNavigationArmed && stablePortTarget != null ->
+                                    "Cible stable, geste unique en cours de validation"
+                                portNavigationArmed -> "Attente de trois positions OCR identiques"
+                                else -> "désactivée par défaut"
+                            })
+                            appendLine("Actions autorisées : navigation Port seulement, après activation explicite. Aucun envoi.")
                             appendLine("La lecture des icônes et des contrats invisibles n'est pas prise en charge.")
                         }
                         try {
@@ -479,6 +549,9 @@ class GameAccessibilityService : AccessibilityService() {
                             }
                         } catch (_: Exception) { /* Clipboard remains available */ }
                         ui.post {
+                            if (stablePortTarget != null && portNavigationArmed) {
+                                navigateToPortOnce(stablePortTarget, observedAtMs)
+                            }
                             capturing = false
                             finish(if (shouldCollect) "Icônes candidates : $savedIcons. Rapport disponible." else "Analyse : ${lines.size} textes, ${parsed.contracts.size} contrats probables. Copier rapport.")
                         }
@@ -493,4 +566,76 @@ class GameAccessibilityService : AccessibilityService() {
             }
         })
     }
+
+    private fun navigateToPortOnce(target: SafePortNavigator.Target, observedAtMs: Long) {
+        if (!portNavigationArmed) return
+        val age = android.os.SystemClock.elapsedRealtime() - observedAtMs
+        val allowed = GestureSafetyGate.allowed(GestureSafetyGate.Request(
+            userEnabled = portNavigationArmed,
+            gameForeground = isGameVisible() && currentPackage == GAME_PACKAGE,
+            screenConfirmed = true,
+            targetConfirmed = true,
+            observationAgeMs = age,
+            screenWidth = target.width,
+            screenHeight = target.height,
+            x = target.x, y = target.y
+        ))
+        // One-shot: disarm even when Android rejects or cancels the gesture.
+        portNavigationArmed = false
+        portTargetGate.reset()
+        autoScan = false
+        ui.removeCallbacks(scanLoop)
+        if (!allowed) {
+            scanStatus?.text = "Navigation annulée : écran, cible ou lecture non fiable."
+            return
+        }
+
+        val path = Path().apply { moveTo(target.x.toFloat(), target.y.toFloat()) }
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0, 90))
+            .build()
+        val dispatched = dispatchGesture(gesture,
+            object : GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    ui.post {
+                        scanStatus?.text = "Geste Port exécuté. Vérification OCR de l'écran suivant."
+                        verifyPortOnce()
+                    }
+                }
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    ui.post { scanStatus?.text = "Geste Port annulé par Android. Aucun nouvel essai." }
+                }
+            }, null)
+        if (!dispatched) {
+            scanStatus?.text = "Android a refusé la navigation. Aucun nouvel essai."
+        }
+    }
+
+    private fun verifyPortOnce() {
+        if (!isGameVisible() || panelDismissed || capturing || scanPending) return
+        portVerificationPending = true
+        ui.postDelayed({
+            if (!isGameVisible() || panelDismissed || capturing || scanPending) {
+                portVerificationPending = false
+                return@postDelayed
+            }
+            scanPending = true
+            panelView?.visibility = View.INVISIBLE
+            ui.postDelayed({
+                if (!isGameVisible() || panelDismissed) {
+                    portVerificationPending = false
+                    scanPending = false
+                    return@postDelayed
+                }
+                inspect { message ->
+                    scanPending = false
+                    if (!panelDismissed) {
+                        panelView?.visibility = View.VISIBLE
+                        scanStatus?.text = "Navigation vérifiée par OCR : consulte le rapport. " + message.take(90)
+                    }
+                }
+            }, 350)
+        }, 1200)
+    }
+
 }
