@@ -55,3 +55,8 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 - Les empreintes visuelles sont enregistrées dans les préférences privées de l'application, sans réseau. Un bouton permet de supprimer les étiquettes.
 - Les nouveaux contrats visibles sont comparés aux exemples locaux avec un seuil strict et une marge d'ambiguïté. Les correspondances restent **diagnostiques** : elles ne sont pas encore injectées comme ressource certaine dans le planificateur, et n'autorisent aucun clic.
 - La position des découpes reste approximative. Ne pas attribuer une étiquette à une découpe montrant du texte, un fond ou plusieurs objets.
+
+## v2.14 — phases navales observées dans la vidéo
+
+- La classification OCR distingue maintenant l'écran de chargement (`CHARGEMENT DE MARCHANDISES`), la cargaison prête (`CARGAISON PRÊTE`) et la récupération de paiement (`DÉCHARGEMENT AU PORT` avec `Récupérer`). Ces libellés et leur ordre ont été relevés dans la vidéo du jeu fournie.
+- Cette reconnaissance ajoute des phases de diagnostic. Elle n'envoie toujours aucun geste de chargement, de départ, de déchargement ou de collecte. L'exécution réelle et sa vérification sur le Galaxy restent à développer et à valider avant toute utilisation automatique.

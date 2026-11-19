@@ -9,8 +9,8 @@ import java.text.Normalizer
  */
 object GameScreenClassifier {
     enum class Screen {
-        WORLD_MAP, SHIPYARD, SHIP_SAILING, UNLOAD_CARGO, PAYMENT_IN_TRANSIT,
-        COLLECT_PAYMENT, MARKET, VILLAGE, UNKNOWN
+        WORLD_MAP, SHIPYARD, SHIP_LOADING, SHIP_READY_TO_SAIL, SHIP_SAILING,
+        UNLOAD_CARGO, PAYMENT_IN_TRANSIT, COLLECT_PAYMENT, MARKET, VILLAGE, UNKNOWN
     }
 
     data class Result(val screen: Screen, val evidence: List<String>, val confidence: String)
@@ -25,7 +25,14 @@ object GameScreenClassifier {
         val strings = lines.map(::normalize).filter { it.isNotBlank() }
         fun has(fragment: String) = strings.any { normalize(fragment) in it }
         val matches = mutableListOf<Pair<Screen, List<String>>>()
-        if (has("CHANTIER NAVAL") && has("ENTREPOT")) matches +=
+        val hasYard = has("CHANTIER NAVAL") && has("ENTREPOT")
+        if (hasYard && has("CHARGEMENT DE MARCHANDISES")) matches +=
+            Screen.SHIP_LOADING to listOf("CHANTIER NAVAL", "CHARGEMENT DE MARCHANDISES")
+        if (hasYard && has("CARGAISON PRETE")) matches +=
+            Screen.SHIP_READY_TO_SAIL to listOf("CHANTIER NAVAL", "CARGAISON PRETE")
+        if (hasYard && has("DECHARGEMENT AU PORT") && strings.any { it.startsWith("RECUPERER") }) matches +=
+            Screen.COLLECT_PAYMENT to listOf("DECHARGEMENT AU PORT", "RECUPERER")
+        if (hasYard && matches.isEmpty()) matches +=
             Screen.SHIPYARD to listOf("CHANTIER NAVAL", "ENTREPOT")
         if (has("DECHARGEMENT DU NAVIRE") && has("ENTREPOT DU ROYAUME")) matches +=
             Screen.UNLOAD_CARGO to listOf("DECHARGEMENT DU NAVIRE", "ENTREPOT DU ROYAUME")

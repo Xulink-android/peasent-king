@@ -10,8 +10,8 @@ android {
         applicationId = "fr.local.peasantassistant"
         minSdk = 32
         targetSdk = 34
-        versionCode = 33
-        versionName = "2.13-game-screen-evidence"
+        versionCode = 34
+        versionName = "2.14-naval-phase-evidence"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
