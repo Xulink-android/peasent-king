@@ -43,6 +43,8 @@ class GameAccessibilityService : AccessibilityService() {
     private var collapsed = false
     private var autoScan = false
     private var panelView: View? = null
+    private var scanPending = false
+    private var scanStatus: TextView? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -92,22 +94,28 @@ class GameAccessibilityService : AccessibilityService() {
             setTextColor(0xFFFFFFFF.toInt())
             maxLines = 8
         }
+        scanStatus = status
         val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         val analyze = Button(this).apply {
             text = "Analyser"
             setOnClickListener {
-                if (capturing) return@setOnClickListener
+                if (capturing || scanPending) return@setOnClickListener
                 if (!isGameVisible()) {
                     status.text = "Ouvre Peasant to King avant l'analyse."
                     return@setOnClickListener
                 }
                 status.text = "Analyse OCR en cours…"
                 // Hide the overlay before taking a screenshot.
+                scanPending = true
                 panel.visibility = View.INVISIBLE
                 ui.postDelayed({
+                    if (panelDismissed) return@postDelayed
                     inspect { message ->
-                        if (!panelDismissed) panel.visibility = View.VISIBLE
-                        status.text = message.take(3000)
+                        scanPending = false
+                        if (!panelDismissed) {
+                            panel.visibility = View.VISIBLE
+                            status.text = message.take(3000)
+                        }
                     }
                 }, 350)
             }
@@ -129,6 +137,7 @@ class GameAccessibilityService : AccessibilityService() {
             setOnClickListener {
                 panelDismissed = true
                 autoScan = false
+                scanPending = false
                 ui.removeCallbacksAndMessages(null)
                 capturing = false
                 this@GameAccessibilityService.overlay?.let { view ->
@@ -150,6 +159,7 @@ class GameAccessibilityService : AccessibilityService() {
             text = "Suivi OFF"
             setOnClickListener {
                 autoScan = !autoScan
+                if (!autoScan) ui.removeCallbacks(scanLoop)
                 text = if (autoScan) "Suivi ON" else "Suivi OFF"
                 status.text = if (autoScan) "Suivi OCR toutes les 5 secondes." else "Suivi arrêté."
                 if (autoScan) ui.post(scanLoop)
@@ -210,12 +220,21 @@ class GameAccessibilityService : AccessibilityService() {
     private val scanLoop = object : Runnable {
         override fun run() {
             if (!autoScan || panelDismissed) return
-            if (!capturing && isGameVisible()) {
+            if (!capturing && !scanPending && isGameVisible()) {
+                scanPending = true
                 panelView?.visibility = View.INVISIBLE
                 ui.postDelayed({
-                    if (!autoScan || panelDismissed) return@postDelayed
-                    inspect { message ->
+                    if (!autoScan || panelDismissed || !isGameVisible()) {
+                        scanPending = false
                         if (!panelDismissed) panelView?.visibility = View.VISIBLE
+                        return@postDelayed
+                    }
+                    inspect { message ->
+                        scanPending = false
+                        if (!panelDismissed) {
+                            panelView?.visibility = View.VISIBLE
+                            scanStatus?.text = message.take(3000)
+                        }
                     }
                 }, 350)
             }
