@@ -93,7 +93,7 @@ object ShipmentScreenEvidenceParser {
                 .matchEntire(line)?.groupValues?.get(1)
                 ?: Regex("""^.+\s+à\s+(.+)$""", RegexOption.IGNORE_CASE)
                     .matchEntire(line)?.groupValues?.get(1)
-        }.filterNot { normalize(it) in setOf("LA MER", "LA TERRE", "L'EST") }
+        }.filterNot { normalize(it) in setOf("RETOURNER", "LA MER", "LA TERRE", "L'EST") }
 
         return Evidence(
             loadedQuantity = progress.singleOrNull()?.first,

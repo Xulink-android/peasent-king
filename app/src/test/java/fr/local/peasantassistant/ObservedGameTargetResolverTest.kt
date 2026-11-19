@@ -10,6 +10,25 @@ class ObservedGameTargetResolverTest {
         expectedReward = 8
     )
 
+    @Test fun acceptanceRequiresTheUniqueExactOfferAndVisibleResourceStock() {
+        val boxes = listOf(
+            ObservedGameTargetResolver.Box("Accepter", 100, 760, 300, 820),
+            ObservedGameTargetResolver.Box("ENVOYER 89", 100, 890, 300, 940),
+            ObservedGameTargetResolver.Box("GAGNER 8", 100, 955, 300, 1000)
+        )
+        val target = ObservedGameTargetResolver.acceptContractTap(
+            GameScreenClassifier.Screen.WORLD_MAP, boxes, 1080, 2340, good)
+        assertNotNull(target)
+        assertEquals(200, target!!.start.x)
+        assertEquals(790, target.start.y)
+        assertNull(ObservedGameTargetResolver.acceptContractTap(
+            GameScreenClassifier.Screen.WORLD_MAP, boxes + boxes.first(), 1080, 2340, good))
+        assertNull(ObservedGameTargetResolver.acceptContractTap(
+            GameScreenClassifier.Screen.WORLD_MAP, boxes, 1080, 2340, good.copy(observedResource = "grain")))
+        assertNull(ObservedGameTargetResolver.acceptContractTap(
+            GameScreenClassifier.Screen.WORLD_MAP, boxes, 1080, 2340, good.copy(confirmedAvailable = 88)))
+    }
+
     @Test fun destinationUsesExactVisibleButtonAndCompleteShipmentProof() {
         val boxes = listOf(
             ObservedGameTargetResolver.Box("ENVOYER 89/89", 620, 800, 900, 850),

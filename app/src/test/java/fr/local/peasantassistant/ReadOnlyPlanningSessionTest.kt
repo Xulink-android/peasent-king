@@ -4,7 +4,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ReadOnlyPlanningSessionTest {
-    private val contract = listOf(ObservationGate.Snapshot("Eastmere", "grain", 95, accepted = true))
+    private val contract = listOf(ObservationGate.Snapshot("Eastmere", "grain", 95, reward = 8, accepted = false))
     private val port = VerifiedStockGate.Verified(
         listOf(ShipmentPlanner.Supply("grain", 120, 10)), 100, 1
     )
@@ -41,12 +41,12 @@ class ReadOnlyPlanningSessionTest {
         assertNull(session.proposal(2001, contract))
     }
 
-    @Test fun neverProposesAnUnacceptedOrUnknownContract() {
+    @Test fun proposesOnlyOneExplicitOfferAndRejectsUnknownStatus() {
         val session = ReadOnlyPlanningSession()
-        val pending = listOf(ObservationGate.Snapshot("Eastmere", "grain", 95, accepted = false))
+        val pending = listOf(ObservationGate.Snapshot("Eastmere", "grain", 95, reward = 8, accepted = false))
         session.observeContracts(pending, 1000)
         session.observePort(port, 1100)
-        assertNull(session.proposal(1200, pending))
+        assertNotNull(session.proposal(1200, pending))
 
         val unknown = listOf(ObservationGate.Snapshot("Eastmere", "grain", 95))
         session.observeContracts(unknown, 1300)
@@ -57,14 +57,24 @@ class ReadOnlyPlanningSessionTest {
     @Test fun refusesToChooseBetweenMultipleSignedContractsWithoutShipBinding() {
         val session = ReadOnlyPlanningSession()
         val signed = listOf(
-            ObservationGate.Snapshot("Eastmere", "grain", 95, accepted = true),
-            ObservationGate.Snapshot("Gullhaven Isles", "lumber", 76, accepted = true)
+            ObservationGate.Snapshot("Eastmere", "grain", 95, 8, accepted = false),
+            ObservationGate.Snapshot("Gullhaven Isles", "lumber", 76, 6, accepted = false)
         )
         session.observeContracts(signed, 1000)
         session.observePort(port.copy(supplies = listOf(
             ShipmentPlanner.Supply("grain", 120), ShipmentPlanner.Supply("lumber", 120)
         )), 1100)
         assertNull(session.proposal(1200, signed))
+    }
+
+    @Test fun verifiedPortFactsAreOnlyAvailableForTheSameFreshExplicitOffer() {
+        val session = ReadOnlyPlanningSession(maxAgeMs = 1000)
+        val offer = listOf(ObservationGate.Snapshot("Eastmere", "grain", 95, 8, false))
+        session.observeContracts(offer, 1000)
+        session.observePort(port, 1100)
+        assertEquals(port, session.verifiedPort(1200, offer))
+        assertNull(session.verifiedPort(1200, offer.map { it.copy(accepted = true) }))
+        assertNull(session.verifiedPort(2101, offer))
     }
 
     @Test fun unverifiedPortInvalidatesPreviouslyConfirmedPort() {

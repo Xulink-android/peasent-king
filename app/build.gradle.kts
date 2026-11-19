@@ -10,8 +10,8 @@ android {
         applicationId = "fr.local.peasantassistant"
         minSdk = 32
         targetSdk = 34
-        versionCode = 45
-        versionName = "2.25-return-flow-evidence"
+        versionCode = 46
+        versionName = "2.26-contract-acceptance-cycle"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

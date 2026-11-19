@@ -1,14 +1,15 @@
-# Peasant King Assistant — bêta installable (navigation Port uniquement)
+# Peasant King Assistant — v2.26 (expérimental)
 
-**Statut actuel :** l'APK de diagnostic peut être installée, mais l'envoi de marchandises et la gestion autonome des contrats ne fonctionnent pas encore. Le bouton « Auto Port (1 fois) » peut demander **un unique geste de navigation vers Port** lorsque le jeu est au premier plan, uniquement après une activation volontaire, trois observations OCR stables et le contrôle des coordonnées. Ce geste n'est pas validé sur un téléphone réel ; il n'implique pas qu'un chargement ou une livraison ont eu lieu. L'application ne nécessite pas d'application tierce de scripting, ni de root.
+**État honnête :** le code Kotlin raccorde désormais le bouton volontaire « Démarrer / Arrêter l’automatisation » à un cycle d’expédition unique. Il vise l’acceptation d’une offre vérifiée ; le PNJ du jeu charge le navire ; l’application attend ensuite des preuves OCR du départ, de l’arrivée, du déchargement, du paiement sécurisé et du retour. Elle n’effectue pas le chargement manuel. Le cycle n’a pas été vérifié de bout en bout sur un Galaxy S24 Ultra : un build vert ne prouve pas que les gestes correspondent à l’interface réelle. N’activez pas l’automatisation pour une partie importante avant le test final sur téléphone.
 
-**Téléchargement de la bêta :** ouvrir [Actions — Build Android APK](https://github.com/Xulink-android/peasent-king/actions/workflows/build-apk.yml), sélectionner le dernier run réussi, télécharger l'artefact `PeasantKingAssistant-debug-apk`, extraire `app-debug.apk`, puis installer normalement dans Android si le système le permet. L'activation du service d'accessibilité nécessite une décision explicite de l'utilisateur dans les paramètres de Samsung/Android. **Ne jamais contourner** les protections contre les « paramètres restreints ». L'APK reste signée avec une clé debug éphémère : une mise à jour future peut échouer et exiger une désinstallation, avec perte possible de réglages et nouvelles autorisations. Attendre une signature de diffusion stable pour une utilisation durable.
+**Téléchargement :** [Actions — Build Android APK](https://github.com/Xulink-android/peasent-king/actions/workflows/build-apk.yml), dernier run réussi, artefact `PeasantKingAssistant-debug-apk`, fichier `app-debug.apk`. L’accès à la capture et aux gestes exige le service d’accessibilité Android activé par l’utilisateur dans les paramètres système. Aucune protection Android/Samsung n’est contournée ; aucun root, ADB ou outil tiers de scripting n’est utilisé.
 
-**Fonctionnement :** l'OCR, les références d'icônes extraites de l'APK et les propositions d'expédition sont encore expérimentaux. Les propositions sont uniquement informatives et ne commandent **aucun envoi**. Le service s'arrête d'agir hors de Peasant to King, et le bouton « X Masquer » ne désactive pas l'accès au système : le retirer dans Paramètres → Accessibilité.
+**Limites actuelles :** le service s’arrête dès que le jeu quitte le premier plan, que le service est interrompu, ou qu’une capture, une lecture OCR ou une transition devient incertaine. Une action non confirmée n’est jamais retentée. Après le retour du premier navire, l’application s’arrête : la sélection automatique et l’enchaînement du contrat suivant ne sont pas encore implémentés. Le workflow fournit une APK de debug à signature éphémère ; les mises à jour durables nécessitent une clé de signature de diffusion persistante gardée dans des secrets GitHub, jamais dans le dépôt.
 
 ---
 
-# Peasant King Assistant — v2.25 bêta
+Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n’est inclus.
+
 
 Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
 
@@ -24,20 +25,18 @@ Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **
 - Tests unitaires du parseur et des planificateurs exécutés par GitHub Actions avant compilation.
 
 ## Limitations essentielles
-**Aucun chargement, transfert, clic ou envoi automatique n'est activé.**
-Les contrats affichent des **icônes** de marchandises : l'OCR seul ne permet pas d'en déduire la ressource. L'application refuse de deviner une ressource ou un stock. Le planificateur n'est pas encore alimenté automatiquement par les valeurs réelles du jeu : il faut les saisir dans l'application. L'analyse des contrats est une simulation/diagnostic et non un bot complet.
+Le cycle d’un seul contrat est raccordé au service, mais reste expérimental et non validé en jeu réel. La reconnaissance d’icônes, les compteurs de stocks/réservations, les coordonnées de glissement au déchargement et les écrans après transition peuvent échouer : dans ce cas le service bloque sans nouvelle action. Aucun enchaînement vers un deuxième contrat n’est encore fait. La réussite des tests et de `assembleDebug` ne valide pas le comportement dans le jeu.
 
 ## APK
 Dans **Actions → Build Android APK → dernier build vert → Artifacts**, télécharger `PeasantKingAssistant-debug-apk`, décompresser puis installer `app-debug.apk`.
 
 ## Sécurité
-Le service d'accessibilité est une permission sensible. L'application n'envoie pas de gestes et ne transmet pas de rapport sur un serveur. Le bouton **X Fermer** appelle `disableSelf()` pour couper le service. En cas de problème : Paramètres Android → Accessibilité → Applications installées → Peasant King Assistant → Désactiver.
+Le service d’accessibilité est une permission sensible. Les gestes d’expédition sont conditionnés par l’activation volontaire ; les rapports OCR restent locaux et ne sont pas transmis à un serveur. Le bouton **X Fermer** appelle `disableSelf()` pour couper le service. En cas de problème : Paramètres Android → Accessibilité → Applications installées → Peasant King Assistant → Désactiver.
 
-## Étapes restantes pour un bot autonome
-1. Identifier de manière vérifiable les icônes des marchandises et les écrans de stocks/entrepôts.
-2. Associer les stocks réels et les arrivages à des ressources et des ports.
-3. Mettre en place un moteur d'actions avec vérification après chaque transition et arrêt immédiat.
-4. Tester sur appareil réel, puis activer l'automatisation uniquement lorsque la reconnaissance est fiable.
+## Étapes restantes
+1. Vérifier le cycle d’une expédition complète sur le Galaxy S24 Ultra et ajuster les cibles à l’interface réellement observée.
+2. Ajouter la sélection sûre d’une nouvelle offre après retour, avec actualisation indépendante des stocks et prévention des doublons entre sessions.
+3. Configurer une signature de diffusion persistante via secrets GitHub afin que les mises à jour s’installent sans désinstallation.
 
 
 ## Sécurité et autorisations (v1.9)
@@ -47,7 +46,7 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 - Le bouton **X Masquer** ferme seulement l'interface flottante. Le service reste activé et peut afficher le panneau à nouveau au prochain retour dans le jeu. Pour retirer l'accès, désactiver le service dans les paramètres d'accessibilité Android.
 - Le rapport OCR et les découpes d'icônes restent dans le stockage privé de l'application. Copier un rapport dans le presse-papiers est une action volontaire de l'utilisateur.
 - Les APK de debug produits par GitHub Actions peuvent être signés avec des clés différentes d'une compilation à l'autre. **Ne pas désinstaller l'application en supposant qu'une mise à jour sera possible** : la distribution de mises à jour fiables nécessitera une clé de signature persistante stockée dans des secrets GitHub Actions, jamais dans le dépôt public.
-- Aucun geste automatique n'est envoyé au jeu dans cette version.
+- Les gestes du cycle d’expédition sont déclenchés uniquement après activation volontaire dans l’application et les contrôles d’écran/cible. Ils restent expérimentaux et s’arrêtent sur toute incertitude.
 
 ## v2.1 — reconnaissance locale expérimentale
 
@@ -116,6 +115,12 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 
 - La vidéo fournie montre que le jeu sécurise le paiement puis affiche « Prêt à retourner » et « Repartir » ; il n'y a pas de bouton « Récupérer » dans cette séquence. Le classificateur, le parseur OCR, le résolveur de cible et le moteur d'états couvrent maintenant cette séquence observée et exigent le montant exact avant le retour.
 - Le moteur n'est toujours pas raccordé au service d'accessibilité en direct. Aucun cycle complet ni enchaînement automatique n'est activé ou validé sur le Galaxy S24 Ultra ; l'APK de cette version reste un build de diagnostic.
+
+## v2.26 — acceptation de contrat et chargement par le PNJ
+
+- Le parcours tient maintenant compte de l'indication de l'utilisateur : le PNJ charge le navire après acceptation du contrat. Le moteur ne prévoit plus de glissement manuel de la cargaison ni d'envoi depuis l'écran de chargement.
+- Avant de proposer « Accepter », le moteur exige une offre non signée identifiée, le bouton relié au même contrat, la ressource par icône, le montant, la destination, la récompense, un stock confirmé et une capacité suffisante. Il vérifie ensuite l'acceptation puis le départ sans retenter le clic.
+- L’arrivée, le déchargement, le paiement sécurisé et « Repartir » sont raccordés au service d’accessibilité pour un cycle unique et échouent en mode fermé si une preuve manque. Les tests portent sur la logique et les cibles OCR ; l’exécution réelle sur Galaxy reste à valider. L’enchaînement du contrat suivant et la signature stable restent à faire.
 
 ## Audit de la grille observée
 

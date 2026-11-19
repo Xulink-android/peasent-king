@@ -41,19 +41,32 @@ class ReadOnlyPlanningSession(private val maxAgeMs: Long = 30_000L) {
         return "Port confirmé : ${verified.supplies.size} ressources"
     }
 
-    fun proposal(nowMs: Long, currentStableContracts: List<ObservationGate.Snapshot>): ShipmentPlanner.Proposal? {
+    fun verifiedPort(
+        nowMs: Long,
+        currentStableContracts: List<ObservationGate.Snapshot>
+    ): VerifiedStockGate.Verified? {
         if (currentStableContracts.isEmpty()) return null
         val c = contracts ?: return null
         if (currentStableContracts.sortedWith(compareBy({ it.kingdom }, { it.resource }, { it.amount }, { it.accepted })) != c.value) return null
         val p = port ?: return null
-        if (nowMs < c.at || nowMs < p.at ||
-            nowMs - c.at > maxAgeMs || nowMs - p.at > maxAgeMs) return null
-        val acceptedContracts = c.value.filter { it.accepted == true }
-        // Without a live per-ship binding, more than one signed contract is ambiguous.
-        if (acceptedContracts.size != 1) return null
+        if (nowMs < c.at || nowMs < p.at || nowMs - c.at > maxAgeMs || nowMs - p.at > maxAgeMs) return null
+        if (c.value.any { it.accepted == null } || c.value.count { it.accepted == false } != 1 ||
+            c.value.any { it.accepted == true }) return null
+        return p.value
+    }
+
+    fun proposal(nowMs: Long, currentStableContracts: List<ObservationGate.Snapshot>): ShipmentPlanner.Proposal? {
+        if (currentStableContracts.isEmpty()) return null
+        val c = contracts ?: return null
+        if (currentStableContracts.sortedWith(compareBy({ it.kingdom }, { it.resource }, { it.amount }, { it.accepted })) != c.value) return null
+        val p = verifiedPort(nowMs, currentStableContracts) ?: return null
+        val offers = c.value.filter { it.accepted == false }
+        // The cycle accepts exactly one visible, unsigned offer at a time.
+        val offer = offers.singleOrNull() ?: return null
+        if (c.value.any { it.accepted == null || it.accepted == true } || offer.reward?.let { it > 0 } != true) return null
         return ShipmentPlanner.plan(
-            acceptedContracts.map { ShipmentPlanner.Demand(it.kingdom, it.resource, it.amount, it.reward) },
-            p.value.supplies, p.value.capacity, p.value.ships
+            listOf(ShipmentPlanner.Demand(offer.kingdom, offer.resource, offer.amount, offer.reward)),
+            p.supplies, p.capacity, p.ships
         ).proposals.firstOrNull()
     }
 }

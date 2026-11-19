@@ -42,6 +42,8 @@ class GameAccessibilityService : AccessibilityService() {
     private val planningSession = ReadOnlyPlanningSession()
     private val automationCoordinator = AutomationCoordinator()
     private val portTargetGate = PortTargetGate()
+    private val shipmentCycleMachine = ShipmentCycleMachine()
+    private val shipmentCycleBridge = ShipmentCycleGestureBridge(shipmentCycleMachine)
     private var overlay: View? = null
     private var lastReport: String = ""
     private var currentPackage: String? = null
@@ -55,6 +57,16 @@ class GameAccessibilityService : AccessibilityService() {
     private var collectIconSamples = false
     private var portNavigationArmed = false
     private var portVerificationPending = false
+    private var shipmentAutomationEnabled = false
+    private var shipmentAutomationButton: Button? = null
+    private var activeShipment: ShipmentCycleMachine.Shipment? = null
+    private var activeContract: ObservationGate.Snapshot? = null
+    private var cycleContinuityBound = false
+    private var lastStableContracts: List<ObservationGate.Snapshot> = emptyList()
+    private var lastContractContext = false
+    private var lastGameScreen = GameScreenClassifier.Screen.UNKNOWN
+    private val attemptedShipmentKeys = mutableSetOf<String>()
+    private var shipmentStatusMessage = ""
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -69,6 +81,7 @@ class GameAccessibilityService : AccessibilityService() {
         val wasGame = currentPackage == GAME_PACKAGE
         currentPackage = nextPackage
         if (nextPackage != GAME_PACKAGE) {
+            stopShipmentAutomation("Automatisation arrêtée : jeu en arrière-plan.", stopScanning = false)
             autoScan = false
             scanPending = false
             collectIconSamples = false
@@ -79,6 +92,9 @@ class GameAccessibilityService : AccessibilityService() {
             verifiedStockGate.reset()
             badgeInventoryGate.reset()
             planningSession.reset()
+            lastStableContracts = emptyList()
+            lastContractContext = false
+            lastGameScreen = GameScreenClassifier.Screen.UNKNOWN
             automationCoordinator.reset()
             ui.removeCallbacks(scanLoop)
             overlay?.visibility = View.GONE
@@ -92,6 +108,7 @@ class GameAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
+        stopShipmentAutomation("Automatisation arrêtée : service interrompu.", stopScanning = true)
         portNavigationArmed = false
         portVerificationPending = false
         portTargetGate.reset()
@@ -99,12 +116,16 @@ class GameAccessibilityService : AccessibilityService() {
         verifiedStockGate.reset()
         planningSession.reset()
         observationGate.reset()
+        lastStableContracts = emptyList()
+        lastContractContext = false
+        lastGameScreen = GameScreenClassifier.Screen.UNKNOWN
         automationCoordinator.reset()
         autoScan = false
         ui.removeCallbacks(scanLoop)
     }
 
     override fun onDestroy() {
+        stopShipmentAutomation("Automatisation arrêtée : service fermé.", stopScanning = true)
         overlay?.let {
             try {
                 (getSystemService(WINDOW_SERVICE) as WindowManager).removeView(it)
@@ -119,6 +140,9 @@ class GameAccessibilityService : AccessibilityService() {
         verifiedStockGate.reset()
         badgeInventoryGate.reset()
         planningSession.reset()
+        lastStableContracts = emptyList()
+        lastContractContext = false
+        lastGameScreen = GameScreenClassifier.Screen.UNKNOWN
         automationCoordinator.reset()
         ui.removeCallbacksAndMessages(null)
         recognizer.close()
@@ -190,6 +214,7 @@ class GameAccessibilityService : AccessibilityService() {
             text = "X Masquer"
             setOnClickListener {
                 panelDismissed = true
+                stopShipmentAutomation("Automatisation arrêtée : panneau fermé.", stopScanning = true)
                 portNavigationArmed = false
                 portVerificationPending = false
                 portTargetGate.reset()
@@ -207,6 +232,9 @@ class GameAccessibilityService : AccessibilityService() {
                 verifiedStockGate.reset()
                 badgeInventoryGate.reset()
                 planningSession.reset()
+        lastStableContracts = emptyList()
+        lastContractContext = false
+        lastGameScreen = GameScreenClassifier.Screen.UNKNOWN
                 automationCoordinator.reset()
                 // Hide the panel without revoking the Android authorization.
             }
@@ -224,6 +252,7 @@ class GameAccessibilityService : AccessibilityService() {
             setOnClickListener {
                 autoScan = !autoScan
                 if (!autoScan) {
+                    stopShipmentAutomation("Automatisation arrêtée avec le suivi.", stopScanning = false)
                     portNavigationArmed = false
                     portTargetGate.reset()
                     badgeInventoryGate.reset()
@@ -260,6 +289,17 @@ class GameAccessibilityService : AccessibilityService() {
                 }, 350)
             }
         }
+        val shipmentToggle = Button(this).apply {
+            text = if (shipmentAutomationEnabled) "Arrêter l'automatisation" else "Démarrer l'automatisation"
+            setOnClickListener {
+                if (shipmentAutomationEnabled) {
+                    stopShipmentAutomation("Automatisation arrêtée par l'utilisateur.", stopScanning = true)
+                } else {
+                    startShipmentAutomation()
+                }
+            }
+        }
+        shipmentAutomationButton = shipmentToggle
         val openPort = Button(this).apply {
             text = "Auto Port (1 fois)"
             setOnClickListener {
@@ -286,6 +326,7 @@ class GameAccessibilityService : AccessibilityService() {
         buttons.addView(copy)
         buttons.addView(repeat)
         panel.addView(openPort)
+        panel.addView(shipmentToggle)
         panel.addView(collapse)
         panel.addView(close)
         panel.addView(buttons)
@@ -335,9 +376,231 @@ class GameAccessibilityService : AccessibilityService() {
         }
     }
 
+    private fun startShipmentAutomation() {
+        if (!isGameVisible() || currentPackage != GAME_PACKAGE) {
+            scanStatus?.text = "Ouvre Peasant to King avant de démarrer."
+            return
+        }
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!lastContractContext || lastGameScreen != GameScreenClassifier.Screen.WORLD_MAP) {
+            scanStatus?.text = "Affiche l'offre sur la carte et vérifie les stocks du port avant de démarrer."
+            return
+        }
+        val proposal = planningSession.proposal(now, lastStableContracts)
+        if (proposal == null) {
+            scanStatus?.text = "Pas d'offre unique confirmée avec récompense, ressource et stock suffisants."
+            return
+        }
+        val contract = lastStableContracts.singleOrNull {
+            it.accepted == false && it.kingdom == proposal.kingdom &&
+                it.resource == proposal.resource && it.amount == proposal.quantity &&
+                it.reward == proposal.expectedReward
+        }
+        val reward = proposal?.expectedReward
+        if (contract == null || reward == null || reward <= 0) {
+            scanStatus?.text = "Pas d'offre unique confirmée avec récompense, ressource et stock suffisants."
+            return
+        }
+        val key = listOf(contract.kingdom, contract.resource, contract.amount, contract.reward).joinToString("|")
+        if (key in attemptedShipmentKeys) {
+            scanStatus?.text = "Cette offre a déjà été tentée pendant cette session ; aucun second clic."
+            return
+        }
+        val plan = ShipmentCycleMachine.Shipment(proposal.kingdom, proposal.resource, proposal.quantity, reward)
+        val started = shipmentCycleBridge.start(plan, userApproved = true, nowMs = now)
+        if (started.state == ShipmentCycleMachine.State.BLOCKED) {
+            scanStatus?.text = started.reason
+            return
+        }
+        attemptedShipmentKeys += key
+        activeShipment = plan
+        activeContract = contract
+        cycleContinuityBound = false
+        portNavigationArmed = false
+        portTargetGate.reset()
+        shipmentAutomationEnabled = true
+        shipmentStatusMessage = "Automatisation active : vérification de l'offre."
+        shipmentAutomationButton?.text = "Arrêter l'automatisation"
+        autoScan = true
+        ui.removeCallbacks(scanLoop)
+        ui.post(scanLoop)
+        scanStatus?.text = "Automatisation démarrée : vérification de l'offre, du stock et du bouton Accepter."
+    }
+
+    private fun stopShipmentAutomation(reason: String, stopScanning: Boolean) {
+        shipmentAutomationEnabled = false
+        shipmentStatusMessage = reason
+        shipmentCycleBridge.stop()
+        activeShipment = null
+        activeContract = null
+        cycleContinuityBound = false
+        shipmentAutomationButton?.text = "Démarrer l'automatisation"
+        if (stopScanning) {
+            autoScan = false
+            scanPending = false
+            ui.removeCallbacks(scanLoop)
+        }
+        scanStatus?.text = reason
+    }
+
+    private fun machineScreen(
+        contractContext: Boolean,
+        screen: GameScreenClassifier.Screen
+    ): ShipmentCycleMachine.Screen {
+        when (screen) {
+            GameScreenClassifier.Screen.SHIP_SAILING -> return ShipmentCycleMachine.Screen.SHIP_SAILING
+            GameScreenClassifier.Screen.UNLOAD_CARGO -> return ShipmentCycleMachine.Screen.UNLOAD_CARGO
+            GameScreenClassifier.Screen.PAYMENT_IN_TRANSIT -> return ShipmentCycleMachine.Screen.PAYMENT_IN_TRANSIT
+            GameScreenClassifier.Screen.RETURN_READY -> return ShipmentCycleMachine.Screen.RETURN_READY
+            GameScreenClassifier.Screen.SHIPYARD_READY -> return ShipmentCycleMachine.Screen.SHIPYARD_READY
+            else -> Unit
+        }
+        if (contractContext) return ShipmentCycleMachine.Screen.CONTRACTS
+        return when (screen) {
+            GameScreenClassifier.Screen.WORLD_MAP -> ShipmentCycleMachine.Screen.WORLD_MAP
+            else -> ShipmentCycleMachine.Screen.UNKNOWN
+        }
+    }
+
+    private fun advanceShipmentAutomation(
+        context: String,
+        gameScreen: GameScreenClassifier.Result,
+        evidence: ShipmentScreenEvidenceParser.Evidence,
+        stableContracts: List<ObservationGate.Snapshot>,
+        iconMatches: List<Triple<String, String, ContractIconLinker.Candidate>>,
+        stock: VerifiedStockGate.Verified?,
+        observedAtMs: Long,
+        width: Int,
+        height: Int,
+        boxes: List<ObservedGameTargetResolver.Box>
+    ) {
+        val plan = activeShipment ?: return
+        if (!shipmentAutomationEnabled) return
+        val contractContext = context == "Écran de contrats probable"
+        val contractsNow = if (contractContext) stableContracts else lastStableContracts
+        val verifiedPort = planningSession.verifiedPort(observedAtMs, contractsNow)
+        val matchingContract = stableContracts.singleOrNull {
+            it.kingdom == plan.kingdom && it.resource == plan.resource &&
+                it.amount == plan.quantity && it.reward == plan.expectedReward
+        }
+        if (matchingContract?.accepted == true) {
+            activeContract = matchingContract
+            cycleContinuityBound = true
+        }
+        val contract = matchingContract ?: activeContract
+        val iconForPlan = iconMatches.filter { (line, label) ->
+            line.trim().matches(Regex("(?:ENVOYER|SEND)\\s+${plan.quantity}(?:\\s|$).*", RegexOption.IGNORE_CASE)) &&
+                label == plan.resource
+        }.map { it.second }.distinct().singleOrNull()
+        val observedResource = when {
+            contractContext -> matchingContract?.resource
+            gameScreen.screen == GameScreenClassifier.Screen.SHIP_SAILING -> iconForPlan
+            cycleContinuityBound -> plan.resource
+            else -> null
+        }
+        val portSupply = verifiedPort?.supplies?.singleOrNull { it.resource == plan.resource }
+        val stockAvailable = if (contractContext) portSupply?.let { it.availableAtPort - it.reserved }
+            else stock?.supplies?.singleOrNull { it.resource == plan.resource }?.let { it.availableAtPort - it.reserved }
+        val shipCapacity = if (contractContext) verifiedPort?.capacity else stock?.capacity
+            ?: verifiedPort?.capacity
+        val acceptEvidence = ObservedGameTargetResolver.ShipmentEvidence(
+            kingdom = plan.kingdom,
+            resource = plan.resource,
+            quantity = plan.quantity,
+            confirmedAvailable = stockAvailable,
+            shipCapacity = shipCapacity,
+            observedResource = observedResource,
+            unambiguous = evidence.warnings.isEmpty(),
+            expectedReward = plan.expectedReward,
+            loadedQuantity = evidence.loadedQuantity
+        )
+        val acceptTarget = if (contractContext && gameScreen.screen == GameScreenClassifier.Screen.WORLD_MAP)
+            ObservedGameTargetResolver.acceptContractTap(gameScreen.screen, boxes, width, height, acceptEvidence)
+        else null
+        val cycleScreen = machineScreen(contractContext, gameScreen.screen)
+        val observation = ShipmentCycleOcrMapper.map(ShipmentCycleOcrMapper.Input(
+            screen = cycleScreen,
+            plan = plan,
+            contract = contract,
+            observedResource = observedResource,
+            acceptButtonVisible = acceptTarget != null,
+            screenEvidence = evidence,
+            stockAvailable = stockAvailable,
+            shipCapacity = shipCapacity,
+            continuityBound = cycleContinuityBound
+        ))
+        val frameEvidence = ObservedGameTargetResolver.ShipmentEvidence(
+            kingdom = plan.kingdom,
+            resource = plan.resource,
+            quantity = plan.quantity,
+            confirmedAvailable = stockAvailable,
+            shipCapacity = shipCapacity,
+            observedResource = observedResource ?: plan.resource.takeIf { cycleContinuityBound },
+            unambiguous = evidence.warnings.isEmpty() && plan.expectedReward > 0,
+            expectedReward = plan.expectedReward,
+            loadedQuantity = evidence.loadedQuantity
+        )
+        val frame = ShipmentCycleGestureBridge.Frame(
+            screen = gameScreen.screen,
+            boxes = boxes,
+            width = width,
+            height = height,
+            evidence = frameEvidence,
+            available = stockAvailable
+        )
+        val result = shipmentCycleBridge.observe(observation, frame, observedAtMs)
+        if (result.decision.state == ShipmentCycleMachine.State.BLOCKED) {
+            stopShipmentAutomation("Automatisation arrêtée : ${result.decision.reason}", stopScanning = false)
+            return
+        }
+        if (result.decision.state == ShipmentCycleMachine.State.COMPLETED) {
+            shipmentAutomationEnabled = false
+            activeShipment = null
+            activeContract = null
+            shipmentAutomationButton?.text = "Démarrer l'automatisation"
+            shipmentStatusMessage = "Expédition vérifiée. Actualise les stocks et sélectionne une nouvelle offre pour le cycle suivant."
+            return
+        }
+        val action = result.decision.action
+        if (action == null) {
+            shipmentStatusMessage = result.decision.reason
+            return
+        }
+        val dispatched = shipmentCycleBridge.dispatch(
+            result = result,
+            dispatcher = AccessibilityGestureDispatcher(this),
+            userEnabled = shipmentAutomationEnabled,
+            gameForeground = isGameVisible() && currentPackage == GAME_PACKAGE,
+            observedAtMs = observedAtMs,
+            width = width,
+            height = height
+        ) { decision ->
+            ui.post {
+                if (decision.state == ShipmentCycleMachine.State.BLOCKED) {
+                    stopShipmentAutomation("Automatisation arrêtée : ${decision.reason}", stopScanning = false)
+                } else {
+                    shipmentStatusMessage = when (action) {
+                        ShipmentCycleMachine.Action.ACCEPT_CONTRACT -> "Contrat accepté par le geste Android ; vérification OCR avant la suite."
+                        ShipmentCycleMachine.Action.UNLOAD_CARGO -> "Déchargement demandé ; vérification OCR avant la suite."
+                        ShipmentCycleMachine.Action.RETURN_SHIP -> "Retour demandé ; vérification du navire et du paiement."
+                    }
+                    scanStatus?.text = shipmentStatusMessage
+                }
+            }
+        }
+        if (dispatched) {
+            shipmentStatusMessage = "Geste ${action.name} transmis ; aucune action suivante avant vérification OCR."
+            scanStatus?.text = shipmentStatusMessage
+        }
+    }
+
     private val scanLoop = object : Runnable {
         override fun run() {
             if (!autoScan || panelDismissed) return
+            if (shipmentAutomationEnabled && (!isGameVisible() || currentPackage != GAME_PACKAGE)) {
+                stopShipmentAutomation("Automatisation arrêtée : jeu non actif au premier plan.", stopScanning = true)
+                return
+            }
             if (!capturing && !scanPending && isGameVisible()) {
                 collectIconSamples = false
                 scanPending = true
@@ -352,7 +615,8 @@ class GameAccessibilityService : AccessibilityService() {
                         scanPending = false
                         if (!panelDismissed) {
                             panelView?.visibility = View.VISIBLE
-                            scanStatus?.text = message.take(3000)
+                            scanStatus?.text = if (shipmentAutomationEnabled)
+                                (message + "\n" + shipmentStatusMessage).take(3000) else message.take(3000)
                         }
                     }
                 }, 350)
@@ -367,6 +631,7 @@ class GameAccessibilityService : AccessibilityService() {
             return
         }
         if (!isGameVisible()) {
+            if (shipmentAutomationEnabled) stopShipmentAutomation("Automatisation arrêtée : le jeu n'est plus au premier plan.", stopScanning = true)
             finish("Capture refusée : Peasant to King n'est pas au premier plan.")
             return
         }
@@ -374,6 +639,7 @@ class GameAccessibilityService : AccessibilityService() {
         takeScreenshot(Display.DEFAULT_DISPLAY, worker, object : TakeScreenshotCallback {
             override fun onFailure(errorCode: Int) {
                 ui.post {
+                    if (shipmentAutomationEnabled) stopShipmentAutomation("Automatisation arrêtée : capture écran impossible.", stopScanning = true)
                     capturing = false
                     finish("Capture impossible (code $errorCode).")
                 }
@@ -383,6 +649,7 @@ class GameAccessibilityService : AccessibilityService() {
                 if (!isGameVisible()) {
                     result.hardwareBuffer.close()
                     ui.post {
+                        if (shipmentAutomationEnabled) stopShipmentAutomation("Automatisation arrêtée : jeu quitté pendant la capture.", stopScanning = true)
                         capturing = false
                         finish("Capture ignorée : le jeu n'est plus visible.")
                     }
@@ -393,6 +660,7 @@ class GameAccessibilityService : AccessibilityService() {
                 result.hardwareBuffer.close()
                 if (bitmap == null) {
                     ui.post {
+                        if (shipmentAutomationEnabled) stopShipmentAutomation("Automatisation arrêtée : image de capture indisponible.", stopScanning = true)
                         capturing = false
                         finish("Capture indisponible.")
                     }
@@ -405,6 +673,7 @@ class GameAccessibilityService : AccessibilityService() {
                 recognizer.process(InputImage.fromBitmap(bitmap, 0))
                     .addOnSuccessListener { detected ->
                         if (!isGameVisible()) {
+                            stopShipmentAutomation("Automatisation arrêtée : jeu quitté pendant l'OCR.", stopScanning = true)
                             observationGate.reset()
                             verifiedStockGate.reset()
                             planningSession.reset()
@@ -434,6 +703,8 @@ class GameAccessibilityService : AccessibilityService() {
                                 )
                             }
                         )
+                        val rawOcrLines = detected.textBlocks.flatMap { it.lines }
+                        val gameScreen = GameScreenClassifier.classify(rawOcrLines.map { it.text.trim() })
                         val savedIcons = if (shouldCollect) {
                             val matches = detected.textBlocks.flatMap { it.lines }
                                 .filter { it.text.contains(Regex("ENVOYER|SEND", RegexOption.IGNORE_CASE)) }
@@ -474,9 +745,9 @@ class GameAccessibilityService : AccessibilityService() {
                                 }
                             }
                         val stockCountPattern = Regex("""^\s*[0-9][0-9 .]*\s*/\s*[0-9][0-9 .]*\s*$""")
-                        val stockBadgeLines = if (parsedFromText.context == "Écran de stocks probable") {
-                            detected.textBlocks.flatMap { it.lines }
-                                .filter { stockCountPattern.matches(it.text) }
+                        val stockBadgeDetails = if (parsedFromText.context == "Écran de stocks probable" ||
+                            gameScreen.screen == GameScreenClassifier.Screen.SHIP_LOADING) {
+                            rawOcrLines.filter { stockCountPattern.matches(it.text) }
                                 .map { line ->
                                     val resource = line.boundingBox?.let { rect ->
                                         val crop = IconSamples.cropResourceBadgeRightOfText(bitmap, rect)
@@ -486,9 +757,12 @@ class GameAccessibilityService : AccessibilityService() {
                                             crop.recycle()
                                         }
                                     }
-                                    ShipyardBadgeStockParser.OcrLine(line.text.trim(), resource)
+                                    Triple(line, resource, line.boundingBox)
                                 }
                         } else emptyList()
+                        val stockBadgeLines = stockBadgeDetails.map { (line, resource) ->
+                            ShipyardBadgeStockParser.OcrLine(line.text.trim(), resource)
+                        }
                         val badgeStock = ShipyardBadgeStockParser.parse(stockBadgeLines)
                         val savedStockIcons = if (shouldCollect && stockBadgeLines.isNotEmpty()) {
                             detected.textBlocks.flatMap { it.lines }
@@ -524,9 +798,6 @@ class GameAccessibilityService : AccessibilityService() {
                         val parsed = ContractIconLinker.annotate(
                             parsedFromText, iconMatches.map { it.third }
                         )
-                        val gameScreen = GameScreenClassifier.classify(
-                            detected.textBlocks.flatMap { it.lines }.map { it.text.trim() }
-                        )
                         val shipmentEvidence = ShipmentScreenEvidenceParser.parse(
                             detected.textBlocks.flatMap { it.lines }.map { it.text.trim() }
                         )
@@ -546,20 +817,46 @@ class GameAccessibilityService : AccessibilityService() {
                         val observationTime = android.os.SystemClock.elapsedRealtime()
                         if (parsed.context == "Écran de contrats probable") {
                             planningSession.observeContracts(verdict.stable, observationTime)
+                            lastStableContracts = verdict.stable
+                            lastContractContext = verdict.stable.isNotEmpty()
+                        } else {
+                            lastContractContext = false
                         }
-                        if (parsed.context == "Écran de stocks probable") {
+                        lastGameScreen = gameScreen.screen
+                        if (parsed.context == "Écran de stocks probable" ||
+                            gameScreen.screen == GameScreenClassifier.Screen.SHIP_LOADING) {
                             planningSession.observePort(trustedStock, observationTime)
                         }
-                        if (parsed.context == "Écran non identifié") {
+                        if (parsed.context == "Écran non identifié" && gameScreen.screen == GameScreenClassifier.Screen.UNKNOWN) {
                             planningSession.reset()
                             observationGate.reset()
                             verifiedStockGate.reset()
                             badgeInventoryGate.reset()
+                            lastStableContracts = emptyList()
+                            if (shipmentAutomationEnabled) {
+                                stopShipmentAutomation("Automatisation arrêtée : écran non identifié.", stopScanning = false)
+                            }
                         }
                         val suggestedShipment = planningSession.proposal(
                             observationTime,
                             if (parsed.context == "Écran de contrats probable") verdict.stable else emptyList()
                         )
+                        if (shipmentAutomationEnabled) {
+                            advanceShipmentAutomation(
+                                context = parsed.context,
+                                gameScreen = gameScreen,
+                                evidence = shipmentEvidence,
+                                stableContracts = verdict.stable,
+                                iconMatches = iconMatches,
+                                stock = trustedStock,
+                                observedAtMs = observationTime,
+                                width = width,
+                                height = height,
+                                boxes = pixelBoxes.map { ObservedGameTargetResolver.Box(
+                                    it.text, it.left, it.top, it.right, it.bottom
+                                ) }
+                            )
+                        }
                         val decision = automationCoordinator.evaluate(
                             AutomationCoordinator.Snapshot(
                                 if (parsed.context == "Écran de contrats probable") "contracts" else "unknown",
@@ -567,15 +864,15 @@ class GameAccessibilityService : AccessibilityService() {
                             )
                         )
                         lastReport = buildString {
-                            appendLine("Peasant King — diagnostic OCR en lecture seule")
+                            appendLine("Peasant King — inspection OCR et état d'automatisation")
                             appendLine("Écran : $width x $height")
                             appendLine("Textes détectés : ${lines.size}")
                             lines.forEach { appendLine(it) }
                             appendLine("PHASE OBSERVÉE : " + gameScreen.screen)
                             appendLine("INDICES : " + gameScreen.evidence.joinToString(" ; "))
-                            appendLine("FAITS NAVIRE (OCR diagnostique, sans action) : chargé=${shipmentEvidence.loadedQuantity ?: "inconnu"}/${shipmentEvidence.requestedQuantity ?: "inconnu"} ; capacité=${shipmentEvidence.shipCapacity ?: "inconnue"} ; récompense=${shipmentEvidence.reward ?: "inconnue"} ; destination=${shipmentEvidence.kingdom ?: "inconnue"} ; bouton récupérer=${shipmentEvidence.paymentAmount ?: "absent ou inconnu"}")
+                            appendLine("FAITS NAVIRE : cargaison restante=${shipmentEvidence.remainingCargo ?: "inconnue"} ; capacité=${shipmentEvidence.shipCapacity ?: "inconnue"} ; récompense=${shipmentEvidence.reward ?: "inconnue"} ; paiement sécurisé=${shipmentEvidence.paymentSecuredAmount ?: "inconnu"} ; destination=${shipmentEvidence.kingdom ?: "inconnue"}")
                             shipmentEvidence.warnings.forEach { appendLine("OCR navire : " + it) }
-                            appendLine("Prudence : identification expérimentale issue des captures, aucune expédition déclenchée.")
+                            appendLine("Automatisation d'expédition : " + if (shipmentAutomationEnabled) shipmentStatusMessage else "arrêtée ; démarrage explicite requis")
                             appendLine("SIMULATION / INTERPRÉTATION")
                             appendLine(parsed.context)
                             appendLine("VÉRIFICATION : " + verdict.message)
@@ -585,7 +882,7 @@ class GameAccessibilityService : AccessibilityService() {
                             }
                             appendLine("AUTOMATISATION : " + decision.phase + " — " + decision.explanation)
                             appendLine("PLAN MULTI-ÉCRANS : " + (suggestedShipment?.let {
-                                "${it.kingdom} / ${it.resource} / ${it.quantity} (simulation uniquement)"
+                                "${it.kingdom} / ${it.resource} / ${it.quantity} / récompense ${it.expectedReward ?: "inconnue"}"
                             } ?: "attente de contrats et stocks confirmés, récents"))
                             appendLine("LECTURE PORT (expérimentale, sans action) :")
                             appendLine(if (trustedStock == null) {
@@ -602,7 +899,7 @@ class GameAccessibilityService : AccessibilityService() {
                                 appendLine("Badge stock candidat : ${it.amount}/${it.stackCapacity} -> ${it.resource ?: "non reconnu"}")
                             }
                             badgeStock.warnings.forEach { appendLine("Badge stock : " + it) }
-                            if (badgeStock.stacks.isNotEmpty()) appendLine("Ces compteurs représentent la pile, pas une réserve. Aucun stock n'est autorisé au planificateur.")
+                            if (badgeStock.stacks.isNotEmpty()) appendLine("Ces compteurs décrivent les piles visibles ; une offre ne peut passer qu'avec une lecture stable, une seule offre non signée et un stock/capacité suffisants.")
                             if (shouldCollect) appendLine("Candidats icônes enregistrés localement : ${savedIcons + savedStockIcons}")
                             if (shouldCollect) appendLine("Images non étiquetées : identification non garantie.")
                             parsed.contracts.forEach { contract ->
@@ -625,8 +922,7 @@ class GameAccessibilityService : AccessibilityService() {
                                 portNavigationArmed -> "Attente de trois positions OCR identiques"
                                 else -> "désactivée par défaut"
                             })
-                            appendLine("Actions autorisées : navigation Port seulement, après activation explicite. Aucun envoi.")
-                            appendLine("Les badges de stock restent diagnostiques ; les réservations et le cycle direct ne sont pas raccordés.")
+                            appendLine("Geste de contrat uniquement après activation explicite et vérifications concordantes. Aucun chargement manuel : le PNJ du jeu est censé charger le bateau.")
                         }
                         try {
                             openFileOutput("last_ocr_report.txt", Context.MODE_PRIVATE).use {
@@ -643,6 +939,7 @@ class GameAccessibilityService : AccessibilityService() {
                     }
                     .addOnFailureListener { error ->
                         ui.post {
+                            if (shipmentAutomationEnabled) stopShipmentAutomation("Automatisation arrêtée : OCR incertain.", stopScanning = true)
                             capturing = false
                             finish("Échec OCR : ${error.message}")
                         }

@@ -17,25 +17,26 @@ class ShipmentCycleGestureBridgeTest {
         evidence = evidence
     )
 
-    @Test fun firstCycleActionResolvesOnlyTheLivePortLabel() {
+    @Test fun firstCycleActionResolvesOnlyTheOfferAcceptButton() {
         val bridge = ShipmentCycleGestureBridge(ShipmentCycleMachine())
         bridge.run {
             start(plan, true, 1000)
             val contract = ShipmentCycleMachine.Observation(
                 screen = ShipmentCycleMachine.Screen.CONTRACTS,
                 resource = "lumber", quantity = 89, kingdom = "Eastmere", stockAvailable = 111,
-                shipCapacity = 200, reward = 8, contractVerified = true, contractAccepted = true, unambiguous = true
+                shipCapacity = 200, reward = 8, contractVerified = true, acceptButtonVisible = true, unambiguous = true
             )
             val boxes = frame(listOf(
-                ObservedGameTargetResolver.Box("TERRE", 100, 100, 230, 150),
-                ObservedGameTargetResolver.Box("PORT", 800, 2070, 980, 2140)
+                ObservedGameTargetResolver.Box("Accepter", 100, 760, 300, 820),
+                ObservedGameTargetResolver.Box("ENVOYER 89", 100, 890, 300, 940),
+                ObservedGameTargetResolver.Box("GAGNER 8", 100, 955, 300, 1000)
             ))
             observe(contract, boxes, 1100)
             observe(contract, boxes, 1200)
             val resolved = observe(contract, boxes, 1300)
-            assertEquals(ShipmentCycleMachine.Action.OPEN_PORT, resolved.decision.action)
+            assertEquals(ShipmentCycleMachine.Action.ACCEPT_CONTRACT, resolved.decision.action)
             assertNotNull(resolved.gesture)
-            assertEquals(890, resolved.gesture!!.start.x)
+            assertEquals(200, resolved.gesture!!.start.x)
         }
     }
 
@@ -46,7 +47,7 @@ class ShipmentCycleGestureBridgeTest {
             val contract = ShipmentCycleMachine.Observation(
                 screen = ShipmentCycleMachine.Screen.CONTRACTS,
                 resource = "lumber", quantity = 89, kingdom = "Eastmere", stockAvailable = 111,
-                shipCapacity = 200, reward = 8, contractVerified = true, contractAccepted = true, unambiguous = true
+                shipCapacity = 200, reward = 8, contractVerified = true, acceptButtonVisible = true, unambiguous = true
             )
             val badFrame = frame(listOf(ObservedGameTargetResolver.Box("PORT", 800, 2070, 980, 2140)))
             observe(contract, badFrame, 1100)

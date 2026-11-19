@@ -34,14 +34,36 @@ object ObservedGameTargetResolver {
         height: Int,
         evidence: ShipmentEvidence
     ): Gesture? {
-        if (screen != GameScreenClassifier.Screen.SHIP_READY_TO_SAIL || !validPlan(evidence) ||
-            evidence.shipCapacity!! < evidence.quantity || evidence.observedResource != evidence.resource ||
+        if (screen != GameScreenClassifier.Screen.SHIP_READY_TO_SAIL || !validIdentity(evidence) ||
+            evidence.shipCapacity == null || evidence.shipCapacity < evidence.quantity || evidence.observedResource != evidence.resource ||
             evidence.loadedQuantity != evidence.quantity) return null
         val exactCargo = Regex("^ENVOYER\\s+${evidence.quantity}/${evidence.quantity}(?:\\s.*)?$")
         if (boxes.none { exactCargo.matches(norm(it.text)) }) return null
         val expected = norm("Naviguez vers ${evidence.kingdom}")
         val targets = boxes.filter { norm(it.text) == expected && it.valid(width, height) }
         return targets.singleOrNull()?.let { Gesture(Point(it.centerX, it.centerY), Point(it.centerX, it.centerY), false) }
+    }
+
+    /** Taps only the unique accept button adjacent to the exact planned contract card. */
+    fun acceptContractTap(
+        screen: GameScreenClassifier.Screen,
+        boxes: List<Box>,
+        width: Int,
+        height: Int,
+        evidence: ShipmentEvidence
+    ): Gesture? {
+        val reward = evidence.expectedReward ?: return null
+        if (screen != GameScreenClassifier.Screen.WORLD_MAP || !validLoadPlan(evidence) ||
+            evidence.observedResource != evidence.resource || reward <= 0) return null
+        val send = boxes.filter { norm(it.text) == "ENVOYER ${evidence.quantity}" && it.valid(width, height) }
+        val earn = boxes.filter { norm(it.text) == "GAGNER $reward" && it.valid(width, height) }
+        val accept = boxes.filter { norm(it.text) in setOf("ACCEPTER", "ACCEPT") && it.valid(width, height) }
+        val eligible = accept.filter { button ->
+            send.any { kotlin.math.abs(it.centerY - button.centerY) <= height / 12 } &&
+                earn.any { kotlin.math.abs(it.centerY - button.centerY) <= height / 10 }
+        }
+        val target = eligible.singleOrNull() ?: return null
+        return Gesture(Point(target.centerX, target.centerY), Point(target.centerX, target.centerY), false)
     }
 
     /** Drag one verified resource stack onto the ship. Stock OCR and both resource identifications are mandatory. */
@@ -56,7 +78,7 @@ object ObservedGameTargetResolver {
     ): Gesture? {
         val loaded = evidence.loadedQuantity ?: return null
         val remaining = evidence.quantity - loaded
-        if (screen != GameScreenClassifier.Screen.SHIP_LOADING || !validPlan(evidence) ||
+        if (screen != GameScreenClassifier.Screen.SHIP_LOADING || !validLoadPlan(evidence) ||
             loaded !in 0 until evidence.quantity || evidence.observedResource != evidence.resource ||
             available == null || available != evidence.confirmedAvailable || available < remaining ||
             evidence.confirmedAvailable == null || evidence.confirmedAvailable < remaining ||
@@ -120,7 +142,7 @@ object ObservedGameTargetResolver {
         height: Int,
         evidence: ShipmentEvidence
     ): Gesture? {
-        if (screen != GameScreenClassifier.Screen.UNLOAD_CARGO || !validPlan(evidence) ||
+        if (screen != GameScreenClassifier.Screen.UNLOAD_CARGO || !validIdentity(evidence) ||
             evidence.observedResource != evidence.resource) return null
         val ship = boxes.singleOrNull { norm(it.text).contains(" A ${norm(evidence.kingdom)}") } ?: return null
         val hint = boxes.singleOrNull { norm(it.text).contains("FAITES-LA GLISSER VERS LE MAGASIN") } ?: return null
@@ -134,9 +156,11 @@ object ObservedGameTargetResolver {
         return Gesture(source, destination, true)
     }
 
-    private fun validPlan(value: ShipmentEvidence) = value.unambiguous && value.kingdom.isNotBlank() &&
-        value.resource.isNotBlank() && value.quantity > 0 && value.confirmedAvailable != null &&
-        value.shipCapacity != null
+    private fun validIdentity(value: ShipmentEvidence) = value.unambiguous && value.kingdom.isNotBlank() &&
+        value.resource.isNotBlank() && value.quantity > 0
+
+    private fun validLoadPlan(value: ShipmentEvidence) = validIdentity(value) &&
+        value.confirmedAvailable != null && value.shipCapacity != null
 
     private fun inside(point: Point, width: Int, height: Int) =
         point.x in 1 until width - 1 && point.y in 1 until height - 1

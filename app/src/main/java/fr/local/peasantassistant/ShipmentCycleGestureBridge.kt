@@ -67,21 +67,8 @@ class ShipmentCycleGestureBridge(private val machine: ShipmentCycleMachine) {
     private fun resolve(action: ShipmentCycleMachine.Action, frame: Frame): ObservedGameTargetResolver.Gesture? {
         if (frame.width <= 0 || frame.height <= 0 || !frame.evidence.unambiguous) return null
         return when (action) {
-            ShipmentCycleMachine.Action.OPEN_PORT -> {
-                if (frame.screen != GameScreenClassifier.Screen.WORLD_MAP) return null
-                val target = SafePortNavigator.detect(frame.boxes.map {
-                    SafePortNavigator.TextBox(it.text, it.left, it.top, it.right, it.bottom)
-                }, frame.width, frame.height) ?: return null
-                val point = ObservedGameTargetResolver.Point(target.x, target.y)
-                ObservedGameTargetResolver.Gesture(point, point, false)
-            }
-            ShipmentCycleMachine.Action.LOAD_CARGO -> {
-                val stock = frame.stockLabel ?: return null
-                ObservedGameTargetResolver.loadCargoDrag(frame.screen, frame.boxes, frame.width,
-                    frame.height, stock, frame.available, frame.evidence)
-            }
-            ShipmentCycleMachine.Action.SEND_SHIP ->
-                ObservedGameTargetResolver.destinationTap(frame.screen, frame.boxes, frame.width,
+            ShipmentCycleMachine.Action.ACCEPT_CONTRACT ->
+                ObservedGameTargetResolver.acceptContractTap(frame.screen, frame.boxes, frame.width,
                     frame.height, frame.evidence)
             ShipmentCycleMachine.Action.UNLOAD_CARGO ->
                 ObservedGameTargetResolver.unloadCargoDrag(frame.screen, frame.boxes, frame.width,
