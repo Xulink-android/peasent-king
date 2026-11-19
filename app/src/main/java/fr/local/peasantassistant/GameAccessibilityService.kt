@@ -312,6 +312,11 @@ class GameAccessibilityService : AccessibilityService() {
                             appendLine("Actions autorisées : aucune (diagnostic uniquement).")
                             appendLine("La lecture des icônes et des contrats invisibles n'est pas prise en charge.")
                         }
+                        try {
+                            openFileOutput("last_ocr_report.txt", Context.MODE_PRIVATE).use {
+                                it.write(lastReport.toByteArray(Charsets.UTF_8))
+                            }
+                        } catch (_: Exception) { /* Clipboard remains available */ }
                         ui.post {
                             capturing = false
                             finish("Analyse : ${lines.size} textes, ${parsed.contracts.size} contrats probables. Copier rapport.")
