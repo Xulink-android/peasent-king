@@ -7,6 +7,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.widget.ImageView
+import android.widget.Spinner
+import android.widget.ArrayAdapter
 import java.io.File
 import android.os.Bundle
 import android.provider.Settings
@@ -30,7 +32,7 @@ class MainActivity : Activity() {
             textSize = 16f
             setPadding(0, 12, 0, 4)
         }
-        root.addView(label("Peasant King Assistant — v2.0 (simulation)"))
+        root.addView(label("Peasant King Assistant — v2.1 (simulation)"))
         root.addView(label(
             "Lecture OCR locale et simulation des contrats. " +
             "Aucun clic ni transfert automatique n'est effectué. " +
@@ -98,10 +100,34 @@ class MainActivity : Activity() {
                     }
                     gallery.addView(label(file.name + " — découpe non vérifiée"))
                     gallery.addView(preview)
+                    val selector = Spinner(this@MainActivity)
+                    selector.adapter = ArrayAdapter(
+                        this@MainActivity,
+                        android.R.layout.simple_spinner_dropdown_item,
+                        IconLibrary.labels
+                    )
+                    gallery.addView(selector)
+                    gallery.addView(Button(this@MainActivity).apply {
+                        text = "Valider cette icône"
+                        setOnClickListener {
+                            val selected = selector.selectedItem?.toString() ?: return@setOnClickListener
+                            val accepted = IconLibrary.save(this@MainActivity, selected, bitmap)
+                            diagnostic.text = if (accepted) {
+                                "Exemple local enregistré pour $selected. Aucune action dans le jeu."
+                            } else "Enregistrement impossible."
+                        }
+                    })
                 }
             }
         })
         root.addView(gallery)
+        root.addView(Button(this).apply {
+            text = "Effacer les étiquettes d'icônes"
+            setOnClickListener {
+                IconLibrary.clear(this@MainActivity)
+                diagnostic.text = "Bibliothèque d'icônes effacée localement."
+            }
+        })
         root.addView(label("Calculateur de réapprovisionnement — valeurs à saisir depuis le jeu"))
         val resource = EditText(this).apply { hint = "Ressource (ex. blé)" }
         root.addView(resource)
