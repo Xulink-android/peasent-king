@@ -8,7 +8,7 @@
 
 ---
 
-# Peasant King Assistant — v2.18 bêta
+# Peasant King Assistant — v2.19 bêta
 
 Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
 
@@ -78,11 +78,18 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 - Un pont relie les décisions de cycle aux cibles OCR correspondantes et arrête le cycle si la cible visible est absente ou ambiguë. Il couvre l'ouverture du Port, le chargement, le départ, le déchargement et la collecte.
 - Le pont est validé par tests unitaires mais reste à brancher aux observations en direct du service. L'extraction automatique des stocks/réservations de la grille d'icônes est encore incomplète ; l'automatisation complète n'est donc pas activée.
 
+
+## v2.19 — badges de stock diagnostiques
+
+- Le service peut comparer les petites icônes placées à côté des compteurs de piles avec cinq références extraites de la vidéo fournie : blé, pommes de terre, charbon, bois et armes. Les résultats sont étiquetés comme candidats diagnostiques et ne constituent pas une preuve de réserve disponible.
+- Le parseur accepte les compteurs `N/200` comme quantités de pile, refuse les quantités incohérentes et rend ambiguës les ressources reconnues plusieurs fois. Des tests couvrent ces cas et les empreintes des badges.
+- **Aucune expédition n'est déclenchée à partir de ces résultats.** Les badges n'ont pas été vérifiés sur le Galaxy S24 Ultra, le cadrage ML Kit dépend encore des rectangles OCR réels et les réservations des navires ne sont pas déduites. Le moteur de cycle complet n'est toujours pas raccordé au flux d'actions du service.
+
 ## Audit de la grille observée
 
 - La vidéo montre un entrepôt de 4 colonnes × 3 rangées. Les quantités sont affichées comme `111/200` sous les piles ; `200` est la capacité d'une pile, pas une réserve. Il ne faut donc pas les faire interpréter par `StockScreenParser` comme des lignes de stock nommées.
-- Le panneau filmé contient des piles de blé, pommes de terre, charbon, bois et une icône d'armes. `arms` est maintenant présent dans les alias de contrat, de stock textuel et dans les étiquettes d'entraînement local. Aucun modèle visuel d'armes n'est toutefois calibré ; les empreintes d'illustration ne reconnaissent pas de manière fiable les piles rendues dans l'entrepôt.
-- Les valeurs visibles ne prouvent pas non plus les réservations de cargaisons d'autres navires. `VerifiedStockGate` rejette donc cette grille et le cycle automatique reste désactivé. Ce blocage est volontaire : aucune cargaison ne doit être chargée à partir d'une simple quantité OCR sans ressource confirmée.
+- Le panneau filmé contient des piles de blé, pommes de terre, charbon, bois et une icône d'armes. `arms` est maintenant présent dans les alias de contrat, de stock textuel et dans les étiquettes d'entraînement local. Cinq empreintes de petits badges rendus à côté des compteurs sont maintenant utilisées pour produire des candidats diagnostiques, y compris les armes ; elles ne proviennent pas d'une validation sur le Galaxy.
+- Le service peut maintenant relever les compteurs `N/200` et tenter d'identifier leurs petits badges. Ces résultats restent séparés du planificateur, car ils ne prouvent pas les réservations de cargaisons d'autres navires. `VerifiedStockGate` rejette donc cette grille et le cycle automatique reste désactivé. Ce blocage est volontaire : aucune cargaison ne doit être chargée à partir d'une quantité OCR sans ressource et réservation confirmées.
 - La vidéo confirme visuellement une expédition manuelle (chargement, départ, arrivée, déchargement, paiement), mais elle ne valide pas l'exécution de ces gestes par l'application. Il faut encore calibrer la reconnaissance des piles sur l'écran réel, raccorder le service et le bouton Démarrer/Arrêter, puis vérifier le cycle sur le Galaxy S24 Ultra.
 - Le workflow actuel exécute les tests unitaires et `assembleDebug`. L'APK est installable mais signée debug ; une signature stable pour les mises à jour n'est pas encore configurée. Aucun secret ni clé privée n'est présent dans le dépôt.
 - Le visionnage image par image montre que le chargement filmé nécessite plusieurs gestes : le compteur progresse par paliers (par exemple `0/89`, puis un chargement partiel, puis `89/89`). La machine attend la preuve OCR d'une hausse stricte et la baisse correspondante du stock avant de proposer un autre glissement. Si l'un des deux compteurs ne concorde pas, ou si la quantité dépasse la demande, elle bloque sans répéter le geste.

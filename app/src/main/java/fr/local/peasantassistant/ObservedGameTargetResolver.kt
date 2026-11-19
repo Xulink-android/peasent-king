@@ -67,7 +67,8 @@ object ObservedGameTargetResolver {
         val hint = boxes.singleOrNull { norm(it.text).contains("MAINTIENS LA CARGAISON") } ?: return null
         val warehouse = boxes.singleOrNull { norm(it.text) == "ENTREPOT" } ?: return null
         if (!hint.valid(width, height) || !warehouse.valid(width, height) || hint.bottom >= warehouse.top) return null
-        val source = Point(stockLabel.centerX, stockLabel.centerY)
+        val sourceY = stockLabel.top - ((stockLabel.bottom - stockLabel.top) * 2.5f).toInt()
+        val source = Point(stockLabel.centerX, sourceY)
         // The recorded UI places the cargo drop zone between its instruction and the warehouse heading.
         val target = Point(width / 2, (hint.bottom + warehouse.top) / 2)
         if (!inside(source, width, height) || !inside(target, width, height)) return null

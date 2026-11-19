@@ -461,6 +461,41 @@ class GameAccessibilityService : AccessibilityService() {
                                     crop.recycle()
                                 }
                             }
+                        val stockCountPattern = Regex("""^\s*[0-9][0-9 .]*\s*/\s*[0-9][0-9 .]*\s*$""")
+                        val stockBadgeLines = if (parsedFromText.context == "Écran de stocks probable") {
+                            detected.textBlocks.flatMap { it.lines }
+                                .filter { stockCountPattern.matches(it.text) }
+                                .map { line ->
+                                    val resource = line.boundingBox?.let { rect ->
+                                        val crop = IconSamples.cropResourceBadgeRightOfText(bitmap, rect)
+                                        if (crop == null) null else try {
+                                            IconLibrary.recognize(this@GameAccessibilityService, crop)
+                                        } finally {
+                                            crop.recycle()
+                                        }
+                                    }
+                                    ShipyardBadgeStockParser.OcrLine(line.text.trim(), resource)
+                                }
+                        } else emptyList()
+                        val badgeStock = ShipyardBadgeStockParser.parse(stockBadgeLines)
+                        val savedStockIcons = if (shouldCollect && stockBadgeLines.isNotEmpty()) {
+                            detected.textBlocks.flatMap { it.lines }
+                                .filter { stockCountPattern.matches(it.text) }
+                                .take((10 - savedIcons).coerceAtLeast(0))
+                                .mapIndexed { index, line ->
+                                    val crop = line.boundingBox?.let { rect ->
+                                        IconSamples.cropResourceBadgeRightOfText(bitmap, rect)
+                                    }
+                                    if (crop == null) false else try {
+                                        IconSamples.saveCandidate(
+                                            java.io.File(filesDir, "icon_candidates"), crop,
+                                            savedIcons + index
+                                        )
+                                    } finally {
+                                        crop.recycle()
+                                    }
+                                }.count { it }
+                        } else 0
                         val pixelBoxes = detected.textBlocks.flatMap { it.lines }
                             .mapNotNull { line ->
                                 val rect = line.boundingBox ?: return@mapNotNull null
@@ -539,7 +574,12 @@ class GameAccessibilityService : AccessibilityService() {
                             }
                             appendLine("Capacité : ${stockObservation.shipCapacity ?: "inconnue"} ; navires : ${stockObservation.availableShips ?: "inconnus"}")
                             stockObservation.warnings.forEach { appendLine("Port : " + it) }
-                            if (shouldCollect) appendLine("Candidats icônes enregistrés localement : $savedIcons")
+                            badgeStock.stacks.forEach {
+                                appendLine("Badge stock candidat : ${it.amount}/${it.stackCapacity} -> ${it.resource ?: "non reconnu"}")
+                            }
+                            badgeStock.warnings.forEach { appendLine("Badge stock : " + it) }
+                            if (badgeStock.stacks.isNotEmpty()) appendLine("Ces compteurs représentent la pile, pas une réserve. Aucun stock n'est autorisé au planificateur.")
+                            if (shouldCollect) appendLine("Candidats icônes enregistrés localement : ${savedIcons + savedStockIcons}")
                             if (shouldCollect) appendLine("Images non étiquetées : identification non garantie.")
                             parsed.contracts.forEach { contract ->
                                 appendLine("Contrat : royaume=" + (contract.kingdom ?: "inconnu") +
@@ -557,7 +597,7 @@ class GameAccessibilityService : AccessibilityService() {
                                 else -> "désactivée par défaut"
                             })
                             appendLine("Actions autorisées : navigation Port seulement, après activation explicite. Aucun envoi.")
-                            appendLine("La lecture des icônes et des contrats invisibles n'est pas prise en charge.")
+                            appendLine("Les badges de stock restent diagnostiques ; les réservations et le cycle direct ne sont pas raccordés.")
                         }
                         try {
                             openFileOutput("last_ocr_report.txt", Context.MODE_PRIVATE).use {

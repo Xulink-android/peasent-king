@@ -38,7 +38,8 @@ object IconLibrary {
     fun recognize(context: Context, bitmap: Bitmap): String? {
         val refs = references(context)
         val sample = IconSamples.perceptualHash(bitmap)
-        if (refs.size < 2) return BundledResourceFingerprints.candidate(sample)
+        val inGameCandidate = InGameResourceBadges.candidate(sample)
+        if (refs.size < 2) return inGameCandidate ?: BundledResourceFingerprints.candidate(sample)
         val scores = refs.map { (label, hashes) ->
             label to hashes.minOf { IconSamples.distance(sample, it) }
         }.sortedBy { it.second }
@@ -48,8 +49,9 @@ object IconLibrary {
         val bundledCandidate = BundledResourceFingerprints.candidate(sample)
         // Conflicting reference sets are not a reliable identification.
         return when {
+            userCandidate != null && inGameCandidate != null && userCandidate != inGameCandidate -> null
             userCandidate != null && bundledCandidate != null && userCandidate != bundledCandidate -> null
-            else -> userCandidate ?: bundledCandidate
+            else -> userCandidate ?: inGameCandidate ?: bundledCandidate
         }
     }
 

@@ -45,13 +45,13 @@ class ObservedGameTargetResolverTest {
             ObservedGameTargetResolver.Box("Maintiens la cargaison, glisse-la à bord et relâche", 80, 900, 980, 990),
             ObservedGameTargetResolver.Box("ENTREPÔT", 430, 1390, 650, 1430)
         )
-        val stock = ObservedGameTargetResolver.Box("111/200", 365, 1690, 520, 1735)
+        val stock = ObservedGameTargetResolver.Box("111/200", 379, 1713, 482, 1734)
         val target = ObservedGameTargetResolver.loadCargoDrag(
             GameScreenClassifier.Screen.SHIP_LOADING, boxes, 1080, 2340, stock, 111, good)
         assertNotNull(target)
         assertTrue(target!!.isDrag)
-        assertEquals(442, target.start.x)
-        assertEquals(1712, target.start.y)
+        assertEquals(430, target.start.x)
+        assertEquals(1661, target.start.y)
         assertEquals(540, target.end.x)
         assertEquals(1190, target.end.y)
         assertNull(ObservedGameTargetResolver.loadCargoDrag(
@@ -66,7 +66,7 @@ class ObservedGameTargetResolverTest {
             ObservedGameTargetResolver.Box("Maintiens la cargaison, glisse-la à bord et relâche", 80, 900, 980, 990),
             ObservedGameTargetResolver.Box("ENTREPÔT", 430, 1390, 650, 1430)
         )
-        val remainingStock = ObservedGameTargetResolver.Box("63/200", 365, 1690, 520, 1735)
+        val remainingStock = ObservedGameTargetResolver.Box("63/200", 379, 1713, 482, 1734)
         val afterPartial = good.copy(confirmedAvailable = 63, loadedQuantity = 48)
         assertNotNull(ObservedGameTargetResolver.loadCargoDrag(
             GameScreenClassifier.Screen.SHIP_LOADING, boxes, 1080, 2340,

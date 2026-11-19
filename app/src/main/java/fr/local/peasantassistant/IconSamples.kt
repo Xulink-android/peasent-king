@@ -24,6 +24,18 @@ object IconSamples {
         return Bitmap.createBitmap(bitmap, left, top, w, h)
     }
 
+    /** Crops the small resource badge immediately to the right of a stock count. */
+    fun cropResourceBadgeRightOfText(bitmap: Bitmap, textBounds: android.graphics.Rect): Bitmap? {
+        val h = textBounds.height().takeIf { it > 0 } ?: return null
+        val size = (h * 1.3f).toInt().coerceIn(20, 96)
+        val left = (textBounds.right + (h * 0.8f).toInt()).coerceIn(0, bitmap.width)
+        val top = (textBounds.top - (h * 0.1f).toInt()).coerceAtLeast(0)
+        val right = (left + size).coerceAtMost(bitmap.width)
+        val bottom = (top + size).coerceAtMost(bitmap.height)
+        if (right - left < 12 || bottom - top < 12) return null
+        return Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top)
+    }
+
     fun saveCandidate(dir: File, bitmap: Bitmap, index: Int): Boolean {
         if (index !in 0..9) return false
         if (!dir.exists() && !dir.mkdirs()) return false
