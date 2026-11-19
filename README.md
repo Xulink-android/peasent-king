@@ -60,3 +60,9 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 
 - La classification OCR distingue maintenant l'écran de chargement (`CHARGEMENT DE MARCHANDISES`), la cargaison prête (`CARGAISON PRÊTE`) et la récupération de paiement (`DÉCHARGEMENT AU PORT` avec `Récupérer`). Ces libellés et leur ordre ont été relevés dans la vidéo du jeu fournie.
 - Cette reconnaissance ajoute des phases de diagnostic. Elle n'envoie toujours aucun geste de chargement, de départ, de déchargement ou de collecte. L'exécution réelle et sa vérification sur le Galaxy restent à développer et à valider avant toute utilisation automatique.
+
+## v2.15 — socle de gestes à cibles observées
+
+- Un résolveur de cibles utilise les rectangles OCR du jeu pour viser le bouton de destination et le paiement, et pour proposer un glissement depuis une ligne de stock reconnue vers la zone de chargement observée. Les propositions sont rejetées si la ressource, la quantité, la destination, le stock ou la capacité ne concordent pas.
+- Un adaptateur Android commun vérifie l'accord utilisateur, le premier plan, la fraîcheur de la capture et les deux extrémités d'un glissement. La navigation Port existante passe maintenant par cet adaptateur.
+- Le résolveur de chargement/destination/paiement est testé en isolation mais n'est pas encore orchestré par `ShipmentExecutionMachine`. Aucune expédition complète n'est activée dans cette version ; il faut encore raccorder le cycle d'états, la lecture réelle des stocks par icônes, l'arrêt Démarrer/Arrêter et valider le tout sur le Galaxy.

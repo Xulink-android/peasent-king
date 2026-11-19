@@ -28,4 +28,11 @@ class GestureSafetyGateTest {
         assertFalse(GestureSafetyGate.allowed(safe.copy(y = 3120)))
         assertTrue(GestureSafetyGate.allowed(safe))
     }
+
+    @Test fun dragRequiresBothEndpointsInsideFreshConfirmedScreen() {
+        assertTrue(GestureSafetyGate.allowedPath(safe, 900, 2100))
+        assertFalse(GestureSafetyGate.allowedPath(safe, 1440, 2100))
+        assertFalse(GestureSafetyGate.allowedPath(safe.copy(screenConfirmed = false), 900, 2100))
+        assertFalse(GestureSafetyGate.allowedPath(safe.copy(observationAgeMs = 1501), 900, 2100))
+    }
 }

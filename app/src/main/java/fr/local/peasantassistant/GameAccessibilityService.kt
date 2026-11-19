@@ -1,12 +1,10 @@
 package fr.local.peasantassistant
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.GestureDescription
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Path
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
@@ -608,22 +606,30 @@ class GameAccessibilityService : AccessibilityService() {
             return
         }
 
-        val path = Path().apply { moveTo(target.x.toFloat(), target.y.toFloat()) }
-        val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, 90))
-            .build()
-        val dispatched = dispatchGesture(gesture,
-            object : GestureResultCallback() {
-                override fun onCompleted(gestureDescription: GestureDescription?) {
-                    ui.post {
-                        scanStatus?.text = "Geste Port exécuté. Vérification OCR de l'écran suivant."
-                        verifyPortOnce()
-                    }
+        val gestureTarget = ObservedGameTargetResolver.Gesture(
+            ObservedGameTargetResolver.Point(target.x, target.y),
+            ObservedGameTargetResolver.Point(target.x, target.y),
+            isDrag = false
+        )
+        val dispatched = AccessibilityGestureDispatcher(this).dispatch(
+            target = gestureTarget,
+            userEnabled = true,
+            gameForeground = isGameVisible() && currentPackage == GAME_PACKAGE,
+            screenConfirmed = true,
+            targetConfirmed = true,
+            observedAtMs = observedAtMs,
+            width = target.width,
+            height = target.height
+        ) { completed ->
+            ui.post {
+                if (completed) {
+                    scanStatus?.text = "Geste Port exécuté. Vérification OCR de l'écran suivant."
+                    verifyPortOnce()
+                } else {
+                    scanStatus?.text = "Geste Port annulé par Android. Aucun nouvel essai."
                 }
-                override fun onCancelled(gestureDescription: GestureDescription?) {
-                    ui.post { scanStatus?.text = "Geste Port annulé par Android. Aucun nouvel essai." }
-                }
-            }, null)
+            }
+        }
         if (!dispatched) {
             scanStatus?.text = "Android a refusé la navigation. Aucun nouvel essai."
         }

@@ -10,8 +10,8 @@ android {
         applicationId = "fr.local.peasantassistant"
         minSdk = 32
         targetSdk = 34
-        versionCode = 34
-        versionName = "2.14-naval-phase-evidence"
+        versionCode = 35
+        versionName = "2.15-observed-gesture-engine"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

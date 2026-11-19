@@ -26,4 +26,8 @@ object GestureSafetyGate {
         request.screenWidth > 0 && request.screenHeight > 0 &&
         request.x in 1 until request.screenWidth - 1 &&
         request.y in 1 until request.screenHeight - 1
+
+    fun allowedPath(request: Request, endX: Int, endY: Int): Boolean =
+        allowed(request) && endX in 1 until request.screenWidth - 1 &&
+            endY in 1 until request.screenHeight - 1
 }
