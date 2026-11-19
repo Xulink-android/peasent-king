@@ -2,6 +2,9 @@ package fr.local.peasantassistant
 
 import android.app.Activity
 import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
 import android.provider.Settings
 import android.text.InputType
@@ -34,6 +37,33 @@ class MainActivity : Activity() {
             text = "Activer / désactiver le service d'accessibilité"
             setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
         })
+        val diagnostic = label("Dernier rapport : pas encore ouvert")
+        root.addView(Button(this).apply {
+            text = "Afficher le dernier rapport OCR enregistré"
+            setOnClickListener {
+                diagnostic.text = try {
+                    openFileInput("last_ocr_report.txt").bufferedReader().use { it.readText() }
+                } catch (_: Exception) {
+                    "Aucun rapport enregistré. Analyse un écran du jeu d'abord."
+                }
+            }
+        })
+        root.addView(Button(this).apply {
+            text = "Copier le dernier rapport"
+            setOnClickListener {
+                val report = try {
+                    openFileInput("last_ocr_report.txt").bufferedReader().use { it.readText() }
+                } catch (_: Exception) { "" }
+                if (report.isBlank()) {
+                    diagnostic.text = "Aucun rapport disponible."
+                } else {
+                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Peasant King OCR", report))
+                    diagnostic.text = "Rapport copié."
+                }
+            }
+        })
+        root.addView(diagnostic)
         root.addView(label("Calculateur de réapprovisionnement — valeurs à saisir depuis le jeu"))
         val resource = EditText(this).apply { hint = "Ressource (ex. blé)" }
         root.addView(resource)
