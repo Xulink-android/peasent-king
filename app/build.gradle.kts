@@ -10,8 +10,8 @@ android {
         applicationId = "fr.local.peasantassistant"
         minSdk = 32
         targetSdk = 34
-        versionCode = 27
-        versionName = "2.7-diagnostic"
+        versionCode = 28
+        versionName = "2.8-diagnostic"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
