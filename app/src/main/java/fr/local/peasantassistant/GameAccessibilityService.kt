@@ -414,7 +414,7 @@ class GameAccessibilityService : AccessibilityService() {
                                 val y = (100.0 * rect.exactCenterY() / height).toInt()
                                 "$x%,$y% : $text"
                             }
-                        val parsed = ContractParser.parse(
+                        val parsedFromText = ContractParser.parse(
                             detected.textBlocks.flatMap { it.lines }.mapNotNull { line ->
                                 val rect = line.boundingBox ?: return@mapNotNull null
                                 ContractParser.Line(
@@ -450,7 +450,15 @@ class GameAccessibilityService : AccessibilityService() {
                                     ?: return@mapNotNull null
                                 try {
                                     val label = IconLibrary.recognize(this@GameAccessibilityService, crop)
-                                    line.text.trim() to (label ?: "non reconnu")
+                                    Triple(
+                                        line.text.trim(),
+                                        label ?: "non reconnu",
+                                        ContractIconLinker.Candidate(
+                                            (100.0 * rect.exactCenterX() / width).toInt(),
+                                            (100.0 * rect.exactCenterY() / height).toInt(),
+                                            label ?: "non reconnu"
+                                        )
+                                    )
                                 } finally {
                                     crop.recycle()
                                 }
@@ -468,6 +476,9 @@ class GameAccessibilityService : AccessibilityService() {
                         val observedAtMs = android.os.SystemClock.elapsedRealtime()
                         val verificationWasPending = portVerificationPending
                         if (verificationWasPending) portVerificationPending = false
+                        val parsed = ContractIconLinker.annotate(
+                            parsedFromText, iconMatches.map { it.third }
+                        )
                         val stockObservation = StockScreenParser.parse(
                             detected.textBlocks.flatMap { it.lines }.map { it.text.trim() }
                         )
@@ -505,7 +516,8 @@ class GameAccessibilityService : AccessibilityService() {
                             appendLine("SIMULATION / INTERPRÉTATION")
                             appendLine(parsed.context)
                             appendLine("VÉRIFICATION : " + verdict.message)
-                            iconMatches.forEach { (contract, label) ->
+                            appendLine("Références d'icônes issues de l'APK : correspondances indicatives, NON validées sur l'écran réel.")
+                            iconMatches.forEach { (contract, label, _) ->
                                 appendLine("ICÔNE CANDIDATE : $contract -> $label (diagnostic non validé)")
                             }
                             appendLine("AUTOMATISATION : " + decision.phase + " — " + decision.explanation)
