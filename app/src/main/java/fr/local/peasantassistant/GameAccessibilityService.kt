@@ -51,17 +51,29 @@ class GameAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        if (!panelDismissed) showPanel()
+        // Never display the overlay outside the target game.
+        if (isGameVisible() && !panelDismissed) showPanel()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            val nextPackage = event.packageName?.toString()
-            val wasGame = currentPackage == GAME_PACKAGE
-            currentPackage = nextPackage
-            if (nextPackage == GAME_PACKAGE && !wasGame && panelDismissed) {
-                panelDismissed = false
-                ui.post { showPanel() }
+        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        val nextPackage = event.packageName?.toString() ?: return
+        if (nextPackage == packageName) return // Ignore our own accessibility overlay.
+        val wasGame = currentPackage == GAME_PACKAGE
+        currentPackage = nextPackage
+        if (nextPackage != GAME_PACKAGE) {
+            autoScan = false
+            scanPending = false
+            collectIconSamples = false
+            observationGate.reset()
+            automationCoordinator.reset()
+            ui.removeCallbacks(scanLoop)
+            overlay?.visibility = View.GONE
+        } else {
+            if (!wasGame && panelDismissed) panelDismissed = false
+            if (!panelDismissed) {
+                if (overlay == null) ui.post { if (isGameVisible()) showPanel() }
+                else overlay?.visibility = View.VISIBLE
             }
         }
     }
@@ -291,6 +303,10 @@ class GameAccessibilityService : AccessibilityService() {
             finish("Une analyse est déjà en cours.")
             return
         }
+        if (!isGameVisible()) {
+            finish("Capture refusée : Peasant to King n'est pas au premier plan.")
+            return
+        }
         capturing = true
         takeScreenshot(Display.DEFAULT_DISPLAY, worker, object : TakeScreenshotCallback {
             override fun onFailure(errorCode: Int) {
@@ -301,6 +317,14 @@ class GameAccessibilityService : AccessibilityService() {
             }
 
             override fun onSuccess(result: ScreenshotResult) {
+                if (!isGameVisible()) {
+                    result.hardwareBuffer.close()
+                    ui.post {
+                        capturing = false
+                        finish("Capture ignorée : le jeu n'est plus visible.")
+                    }
+                    return
+                }
                 val wrapped = Bitmap.wrapHardwareBuffer(result.hardwareBuffer, result.colorSpace)
                 val bitmap = wrapped?.copy(Bitmap.Config.ARGB_8888, false)
                 result.hardwareBuffer.close()
@@ -317,6 +341,15 @@ class GameAccessibilityService : AccessibilityService() {
                 collectIconSamples = false
                 recognizer.process(InputImage.fromBitmap(bitmap, 0))
                     .addOnSuccessListener { detected ->
+                        if (!isGameVisible()) {
+                            observationGate.reset()
+                            automationCoordinator.reset()
+                            ui.post {
+                                capturing = false
+                                finish("Analyse annulée : changement d'application.")
+                            }
+                            return@addOnSuccessListener
+                        }
                         val lines = detected.textBlocks.flatMap { it.lines }
                             .mapNotNull { line ->
                                 val rect = line.boundingBox ?: return@mapNotNull null
