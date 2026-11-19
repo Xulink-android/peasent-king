@@ -8,7 +8,7 @@
 
 ---
 
-# Peasant King Assistant — v2.23 bêta
+# Peasant King Assistant — v2.24 bêta
 
 Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
 
@@ -105,6 +105,12 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 - Le parseur relève séparément les marqueurs OCR « signé » et « accepter ». Le rapport signale aussi l'état inconnu.
 - La proposition multi-écrans ne retient maintenant que les contrats explicitement reconnus comme signés ; les contrats non signés ou au statut incertain ne sont pas proposés. Des tests couvrent le cas où plusieurs contrats côte à côte ont des statuts différents.
 - Ce filtrage sécurise la planification mais ne relie toujours pas le cycle aux gestes Android. Aucun envoi automatique n'est activé.
+
+## v2.24 — piles confirmées pour le plan diagnostique
+
+- Les piles de l'entrepôt peuvent alimenter le plan diagnostique seulement si toutes les icônes sont reconnues, qu'aucune ressource n'est dupliquée, qu'un navire est visible, que l'écran de chargement indique un navire sélectionné, que sa capacité est lisible et que trois captures concordent. La présence de « CONTRAT EN COURS » dans un écran de chantier naval ne le fait plus confondre avec l'écran des contrats.
+- Le planificateur ne choisit qu'un seul contrat explicitement signé à la fois. Si plusieurs contrats sont signés, si un badge est inconnu ou si une donnée manque, il ne propose rien.
+- Cette lecture reste indicative et non testée sur le Galaxy S24 Ultra. Les réservations de contrats tiers ne sont pas indépendamment visibles ; aucun geste d'expédition n'est encore lancé par le service.
 
 ## Audit de la grille observée
 

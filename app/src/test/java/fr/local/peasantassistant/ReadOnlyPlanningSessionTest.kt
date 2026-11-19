@@ -54,6 +54,19 @@ class ReadOnlyPlanningSessionTest {
         assertNull(session.proposal(1500, unknown))
     }
 
+    @Test fun refusesToChooseBetweenMultipleSignedContractsWithoutShipBinding() {
+        val session = ReadOnlyPlanningSession()
+        val signed = listOf(
+            ObservationGate.Snapshot("Eastmere", "grain", 95, accepted = true),
+            ObservationGate.Snapshot("Gullhaven Isles", "lumber", 76, accepted = true)
+        )
+        session.observeContracts(signed, 1000)
+        session.observePort(port.copy(supplies = listOf(
+            ShipmentPlanner.Supply("grain", 120), ShipmentPlanner.Supply("lumber", 120)
+        )), 1100)
+        assertNull(session.proposal(1200, signed))
+    }
+
     @Test fun unverifiedPortInvalidatesPreviouslyConfirmedPort() {
         val session = ReadOnlyPlanningSession()
         session.observeContracts(contract, 1000)

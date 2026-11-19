@@ -38,6 +38,17 @@ class PlanningTest {
         ))
         assertEquals(listOf(true, false), result.contracts.map { it.accepted })
     }
+
+    @Test fun shipyardWarehouseContextTakesPriorityOverContractLabelsOnTheShipPanel() {
+        val result = ContractParser.parse(listOf(
+            ContractParser.Line("CHANTIER NAVAL", 50, 10),
+            ContractParser.Line("CONTRAT EN COURS", 20, 30),
+            ContractParser.Line("ENTREPÔT", 50, 60),
+            ContractParser.Line("ENVOYER 0/89", 70, 40)
+        ))
+        assertEquals("Écran de stocks probable", result.context)
+        assertTrue(result.contracts.isEmpty())
+    }
     @Test fun fillsPortAfterLoadingWithoutOverfilling() {
         val decision = StockPlanner.plan(StockPlanner.Stock("coal", 200, 70, 20, 160, 0, 50))
         assertEquals(110, decision.transfer)

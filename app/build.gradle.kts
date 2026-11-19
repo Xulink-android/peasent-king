@@ -10,8 +10,8 @@ android {
         applicationId = "fr.local.peasantassistant"
         minSdk = 32
         targetSdk = 34
-        versionCode = 43
-        versionName = "2.23-accepted-contract-filter"
+        versionCode = 44
+        versionName = "2.24-badge-stock-gate"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

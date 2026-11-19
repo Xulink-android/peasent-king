@@ -32,7 +32,7 @@ class MainActivity : Activity() {
             textSize = 16f
             setPadding(0, 12, 0, 4)
         }
-        root.addView(label("Peasant King Assistant — v2.23 bêta"))
+        root.addView(label("Peasant King Assistant — v2.24 bêta"))
         root.addView(label(
             "Lecture OCR locale et simulation des contrats. " +
             "Un geste facultatif Auto Port (1 fois) est disponible après activation et vérifications. " +

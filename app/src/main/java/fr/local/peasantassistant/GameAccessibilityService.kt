@@ -38,6 +38,7 @@ class GameAccessibilityService : AccessibilityService() {
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     private val observationGate = ObservationGate()
     private val verifiedStockGate = VerifiedStockGate()
+    private val badgeInventoryGate = BadgeInventoryGate()
     private val planningSession = ReadOnlyPlanningSession()
     private val automationCoordinator = AutomationCoordinator()
     private val portTargetGate = PortTargetGate()
@@ -76,6 +77,7 @@ class GameAccessibilityService : AccessibilityService() {
             portTargetGate.reset()
             observationGate.reset()
             verifiedStockGate.reset()
+            badgeInventoryGate.reset()
             planningSession.reset()
             automationCoordinator.reset()
             ui.removeCallbacks(scanLoop)
@@ -93,6 +95,11 @@ class GameAccessibilityService : AccessibilityService() {
         portNavigationArmed = false
         portVerificationPending = false
         portTargetGate.reset()
+        badgeInventoryGate.reset()
+        verifiedStockGate.reset()
+        planningSession.reset()
+        observationGate.reset()
+        automationCoordinator.reset()
         autoScan = false
         ui.removeCallbacks(scanLoop)
     }
@@ -110,6 +117,7 @@ class GameAccessibilityService : AccessibilityService() {
         portTargetGate.reset()
         observationGate.reset()
         verifiedStockGate.reset()
+        badgeInventoryGate.reset()
         planningSession.reset()
         automationCoordinator.reset()
         ui.removeCallbacksAndMessages(null)
@@ -197,6 +205,7 @@ class GameAccessibilityService : AccessibilityService() {
                 scanStatus = null
                 observationGate.reset()
                 verifiedStockGate.reset()
+                badgeInventoryGate.reset()
                 planningSession.reset()
                 automationCoordinator.reset()
                 // Hide the panel without revoking the Android authorization.
@@ -217,6 +226,9 @@ class GameAccessibilityService : AccessibilityService() {
                 if (!autoScan) {
                     portNavigationArmed = false
                     portTargetGate.reset()
+                    badgeInventoryGate.reset()
+                    verifiedStockGate.reset()
+                    planningSession.reset()
                     ui.removeCallbacks(scanLoop)
                     observationGate.reset()
                     automationCoordinator.reset()
@@ -524,18 +536,25 @@ class GameAccessibilityService : AccessibilityService() {
                         val verifiedStock = verifiedStockGate.observe(
                             parsed.context == "Écran de stocks probable", stockObservation
                         )
+                        val badgeVerifiedStock = badgeInventoryGate.observe(
+                            selectedShipScreen = gameScreen.screen == GameScreenClassifier.Screen.SHIP_LOADING,
+                            badges = badgeStock,
+                            shipCapacity = shipmentEvidence.shipCapacity
+                        )
+                        val trustedStock = verifiedStock ?: badgeVerifiedStock
                         val verdict = observationGate.observe(parsed)
                         val observationTime = android.os.SystemClock.elapsedRealtime()
                         if (parsed.context == "Écran de contrats probable") {
                             planningSession.observeContracts(verdict.stable, observationTime)
                         }
                         if (parsed.context == "Écran de stocks probable") {
-                            planningSession.observePort(verifiedStock, observationTime)
+                            planningSession.observePort(trustedStock, observationTime)
                         }
                         if (parsed.context == "Écran non identifié") {
                             planningSession.reset()
                             observationGate.reset()
                             verifiedStockGate.reset()
+                            badgeInventoryGate.reset()
                         }
                         val suggestedShipment = planningSession.proposal(
                             observationTime,
@@ -569,10 +588,10 @@ class GameAccessibilityService : AccessibilityService() {
                                 "${it.kingdom} / ${it.resource} / ${it.quantity} (simulation uniquement)"
                             } ?: "attente de contrats et stocks confirmés, récents"))
                             appendLine("LECTURE PORT (expérimentale, sans action) :")
-                            appendLine(if (verifiedStock == null) {
+                            appendLine(if (trustedStock == null) {
                                 "Stock non confirmé : aucune proposition d'expédition"
                             } else {
-                                "Stock confirmé sur trois lectures identiques (diagnostic uniquement)"
+                                "Stock OCR confirmé sur trois lectures (piles de l'entrepôt ; réservations non garanties ; diagnostic uniquement)"
                             })
                             stockObservation.supplies.forEach {
                                 appendLine("Stock: ${it.resource} = ${it.availableAtPort}, réservé = ${it.reserved}")

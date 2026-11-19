@@ -49,7 +49,8 @@ class ReadOnlyPlanningSession(private val maxAgeMs: Long = 30_000L) {
         if (nowMs < c.at || nowMs < p.at ||
             nowMs - c.at > maxAgeMs || nowMs - p.at > maxAgeMs) return null
         val acceptedContracts = c.value.filter { it.accepted == true }
-        if (acceptedContracts.isEmpty()) return null
+        // Without a live per-ship binding, more than one signed contract is ambiguous.
+        if (acceptedContracts.size != 1) return null
         return ShipmentPlanner.plan(
             acceptedContracts.map { ShipmentPlanner.Demand(it.kingdom, it.resource, it.amount, it.reward) },
             p.value.supplies, p.value.capacity, p.value.ships

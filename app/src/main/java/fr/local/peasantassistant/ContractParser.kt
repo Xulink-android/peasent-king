@@ -76,8 +76,8 @@ object ContractParser {
         if (contracts.any { it.resource == null }) warnings += "Ressource inconnue : icônes non reconnues. Aucun chargement automatique."
         if (contracts.any { it.kingdom == null }) warnings += "Certains royaumes ne sont pas associés avec certitude."
         val context = when {
-            lines.any { Regex("""\bCONTRAT(?:S)?\b""", RegexOption.IGNORE_CASE).containsMatchIn(it.text) } -> "Écran de contrats probable"
             lines.any { it.text.contains("ENTREPÔT", true) || it.text.contains("WAREHOUSE", true) } -> "Écran de stocks probable"
+            lines.any { Regex("""\bCONTRAT(?:S)?\b""", RegexOption.IGNORE_CASE).containsMatchIn(it.text) } -> "Écran de contrats probable"
             else -> "Écran non identifié"
         }
         return Result(contracts, warnings, context)
