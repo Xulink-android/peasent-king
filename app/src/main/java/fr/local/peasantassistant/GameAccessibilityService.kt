@@ -515,6 +515,9 @@ class GameAccessibilityService : AccessibilityService() {
                         val gameScreen = GameScreenClassifier.classify(
                             detected.textBlocks.flatMap { it.lines }.map { it.text.trim() }
                         )
+                        val shipmentEvidence = ShipmentScreenEvidenceParser.parse(
+                            detected.textBlocks.flatMap { it.lines }.map { it.text.trim() }
+                        )
                         val stockObservation = StockScreenParser.parse(
                             detected.textBlocks.flatMap { it.lines }.map { it.text.trim() }
                         )
@@ -551,6 +554,8 @@ class GameAccessibilityService : AccessibilityService() {
                             lines.forEach { appendLine(it) }
                             appendLine("PHASE OBSERVÉE : " + gameScreen.screen)
                             appendLine("INDICES : " + gameScreen.evidence.joinToString(" ; "))
+                            appendLine("FAITS NAVIRE (OCR diagnostique, sans action) : chargé=${shipmentEvidence.loadedQuantity ?: "inconnu"}/${shipmentEvidence.requestedQuantity ?: "inconnu"} ; capacité=${shipmentEvidence.shipCapacity ?: "inconnue"} ; récompense=${shipmentEvidence.reward ?: "inconnue"} ; destination=${shipmentEvidence.kingdom ?: "inconnue"} ; bouton récupérer=${shipmentEvidence.paymentAmount ?: "absent ou inconnu"}")
+                            shipmentEvidence.warnings.forEach { appendLine("OCR navire : " + it) }
                             appendLine("Prudence : identification expérimentale issue des captures, aucune expédition déclenchée.")
                             appendLine("SIMULATION / INTERPRÉTATION")
                             appendLine(parsed.context)

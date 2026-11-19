@@ -45,7 +45,10 @@ object ShipmentScreenEvidenceParser {
         val warnings = mutableListOf<String>()
         val normalized = lines.map(::normalize).filter(String::isNotBlank)
         val progressPattern = Regex("""^(?:ENVOYER|SEND)\s+([0-9][0-9 ]*)\s*/\s*([0-9][0-9 ]*)(?:\s+.*)?$""")
-        val sendLikeLines = normalized.filter { it.startsWith("ENVOYER ") || it.startsWith("SEND ") }
+        // Contract cards use "ENVOYER 89"; only slash-form values are ship progress.
+        val sendLikeLines = normalized.filter {
+            (it.startsWith("ENVOYER ") || it.startsWith("SEND ")) && it.contains('/')
+        }
         val progress = sendLikeLines.mapNotNull { line ->
             progressPattern.matchEntire(line)?.let { match ->
                 val loaded = match.groupValues[1].replace(" ", "").toIntOrNull()

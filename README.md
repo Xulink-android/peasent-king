@@ -8,7 +8,7 @@
 
 ---
 
-# Peasant King Assistant — v2.20 bêta
+# Peasant King Assistant — v2.21 bêta
 
 Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
 
@@ -88,7 +88,12 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 ## v2.20 — faits OCR explicites du navire
 
 - Un parseur testé extrait les quantités `chargé/demandé`, la capacité, la récompense, la destination et le montant du bouton de collecte lorsqu'ils sont explicitement visibles. Toute valeur contradictoire, mal formée ou absente reste inconnue.
-- Ce parseur est un composant de lecture uniquement : il n'est pas encore relié au service d'accessibilité ni au pont de gestes. Il ne prouve pas qu'un paiement a été crédité et n'autorise aucun geste.
+- Le service affiche maintenant ces champs dans le rapport OCR en direct, à titre diagnostique. Ils ne sont pas encore reliés au pont de gestes. Le montant du bouton « Récupérer » ne prouve pas qu'un paiement a été crédité et n'autorise aucun geste.
+
+## v2.21 — rapport des faits de navire en direct
+
+- Le rapport OCR du service affiche maintenant la progression, la capacité, la récompense, la destination et le montant visible à récupérer, avec les ambiguïtés signalées.
+- Les valeurs restent informatives : le service ne les transmet pas au moteur de cycle et ne déclenche aucun geste d'expédition.
 
 ## Audit de la grille observée
 

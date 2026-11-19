@@ -51,4 +51,10 @@ class ShipmentScreenEvidenceParserTest {
         assertNull(evidence.reward)
         assertTrue(evidence.warnings.isNotEmpty())
     }
+
+    @Test fun contractQuantityWithoutProgressSlashIsNotMisreportedAsAnOcrError() {
+        val evidence = ShipmentScreenEvidenceParser.parse(listOf("ENVOYER 89", "GAGNER 8"))
+        assertNull(evidence.loadedQuantity)
+        assertTrue(evidence.warnings.isEmpty())
+    }
 }
