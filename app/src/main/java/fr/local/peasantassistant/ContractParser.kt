@@ -46,7 +46,7 @@ object ContractParser {
                 }.minByOrNull { abs(it.y - line.y - 2) }?.text
             val resource = nearby.mapNotNull { candidate ->
                 resourceWords.entries.firstOrNull { (word, _) ->
-                    Regex("""(?<![\\p{L}])${Regex.escape(word)}(?![\\p{L}])""", RegexOption.IGNORE_CASE)
+                    Regex("""(?<![\p{L}])${Regex.escape(word)}(?![\p{L}])""", RegexOption.IGNORE_CASE)
                         .containsMatchIn(candidate.text)
                 }?.value
             }.distinct().singleOrNull()
@@ -57,7 +57,7 @@ object ContractParser {
         if (contracts.any { it.resource == null }) warnings += "Ressource inconnue : icônes non reconnues. Aucun chargement automatique."
         if (contracts.any { it.kingdom == null }) warnings += "Certains royaumes ne sont pas associés avec certitude."
         val context = when {
-            lines.any { Regex("""\\bCONTRAT(?:S)?\\b""", RegexOption.IGNORE_CASE).containsMatchIn(it.text) } -> "Écran de contrats probable"
+            lines.any { Regex("""\bCONTRAT(?:S)?\b""", RegexOption.IGNORE_CASE).containsMatchIn(it.text) } -> "Écran de contrats probable"
             lines.any { it.text.contains("ENTREPÔT", true) || it.text.contains("WAREHOUSE", true) } -> "Écran de stocks probable"
             else -> "Écran non identifié"
         }
