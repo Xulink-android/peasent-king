@@ -46,6 +46,7 @@ class GameAccessibilityService : AccessibilityService() {
     private var panelView: View? = null
     private var scanPending = false
     private var scanStatus: TextView? = null
+    private var collectIconSamples = false
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -108,6 +109,7 @@ class GameAccessibilityService : AccessibilityService() {
                 }
                 status.text = "Analyse OCR en cours…"
                 // Hide the overlay before taking a screenshot.
+                collectIconSamples = false
                 scanPending = true
                 panel.visibility = View.INVISIBLE
                 ui.postDelayed({
@@ -170,7 +172,30 @@ class GameAccessibilityService : AccessibilityService() {
                 if (autoScan) ui.post(scanLoop)
             }
         }
+        val icons = Button(this).apply {
+            text = "Capturer icônes"
+            setOnClickListener {
+                if (capturing || scanPending || !isGameVisible()) {
+                    status.text = "Ouvre le jeu et attends la fin de l'analyse."
+                    return@setOnClickListener
+                }
+                collectIconSamples = true
+                scanPending = true
+                panel.visibility = View.INVISIBLE
+                ui.postDelayed({
+                    if (panelDismissed) return@postDelayed
+                    inspect { message ->
+                        scanPending = false
+                        if (!panelDismissed) {
+                            panel.visibility = View.VISIBLE
+                            status.text = message.take(3000)
+                        }
+                    }
+                }, 350)
+            }
+        }
         buttons.addView(analyze)
+        buttons.addView(icons)
         buttons.addView(copy)
         buttons.addView(repeat)
         panel.addView(collapse)
@@ -226,6 +251,7 @@ class GameAccessibilityService : AccessibilityService() {
         override fun run() {
             if (!autoScan || panelDismissed) return
             if (!capturing && !scanPending && isGameVisible()) {
+                collectIconSamples = false
                 scanPending = true
                 panelView?.visibility = View.INVISIBLE
                 ui.postDelayed({
@@ -274,6 +300,8 @@ class GameAccessibilityService : AccessibilityService() {
                 }
                 val width = bitmap.width
                 val height = bitmap.height
+                val shouldCollect = collectIconSamples
+                collectIconSamples = false
                 recognizer.process(InputImage.fromBitmap(bitmap, 0))
                     .addOnSuccessListener { detected ->
                         val lines = detected.textBlocks.flatMap { it.lines }
@@ -295,6 +323,24 @@ class GameAccessibilityService : AccessibilityService() {
                                 )
                             }
                         )
+                        val savedIcons = if (shouldCollect) {
+                            val matches = detected.textBlocks.flatMap { it.lines }
+                                .filter { it.text.contains(Regex("ENVOYER|SEND", RegexOption.IGNORE_CASE)) }
+                                .take(10)
+                            matches.mapIndexed { index, line ->
+                                val rect = line.boundingBox
+                                if (rect == null) false else {
+                                    val crop = IconSamples.cropLeftOfText(bitmap, rect)
+                                    if (crop == null) false else {
+                                        val saved = IconSamples.saveCandidate(
+                                            java.io.File(filesDir, "icon_candidates"), crop, index
+                                        )
+                                        crop.recycle()
+                                        saved
+                                    }
+                                }
+                            }.count { it }
+                        } else 0
                         val verdict = observationGate.observe(parsed)
                         lastReport = buildString {
                             appendLine("Peasant King — diagnostic OCR en lecture seule")
@@ -304,6 +350,8 @@ class GameAccessibilityService : AccessibilityService() {
                             appendLine("SIMULATION / INTERPRÉTATION")
                             appendLine(parsed.context)
                             appendLine("VÉRIFICATION : " + verdict.message)
+                            if (shouldCollect) appendLine("Candidats icônes enregistrés localement : $savedIcons")
+                            if (shouldCollect) appendLine("Images non étiquetées : identification non garantie.")
                             parsed.contracts.forEach { contract ->
                                 appendLine("Contrat : royaume=" + (contract.kingdom ?: "inconnu") +
                                     ", quantité=" + contract.amount + ", ressource=" + (contract.resource ?: "inconnue"))
@@ -319,7 +367,7 @@ class GameAccessibilityService : AccessibilityService() {
                         } catch (_: Exception) { /* Clipboard remains available */ }
                         ui.post {
                             capturing = false
-                            finish("Analyse : ${lines.size} textes, ${parsed.contracts.size} contrats probables. Copier rapport.")
+                            finish(if (shouldCollect) "Icônes candidates : $savedIcons. Rapport disponible." else "Analyse : ${lines.size} textes, ${parsed.contracts.size} contrats probables. Copier rapport.")
                         }
                     }
                     .addOnFailureListener { error ->
