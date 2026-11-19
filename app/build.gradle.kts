@@ -10,8 +10,8 @@ android {
         applicationId = "fr.local.peasantassistant"
         minSdk = 32
         targetSdk = 34
-        versionCode = 39
-        versionName = "2.19-stock-badge-diagnostics"
+        versionCode = 40
+        versionName = "2.20-shipment-evidence-parser"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

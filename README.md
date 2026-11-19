@@ -8,7 +8,7 @@
 
 ---
 
-# Peasant King Assistant — v2.19 bêta
+# Peasant King Assistant — v2.20 bêta
 
 Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
 
@@ -84,6 +84,11 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 - Le service peut comparer les petites icônes placées à côté des compteurs de piles avec cinq références extraites de la vidéo fournie : blé, pommes de terre, charbon, bois et armes. Les résultats sont étiquetés comme candidats diagnostiques et ne constituent pas une preuve de réserve disponible.
 - Le parseur accepte les compteurs `N/200` comme quantités de pile, refuse les quantités incohérentes et rend ambiguës les ressources reconnues plusieurs fois. Des tests couvrent ces cas et les empreintes des badges.
 - **Aucune expédition n'est déclenchée à partir de ces résultats.** Les badges n'ont pas été vérifiés sur le Galaxy S24 Ultra, le cadrage ML Kit dépend encore des rectangles OCR réels et les réservations des navires ne sont pas déduites. Le moteur de cycle complet n'est toujours pas raccordé au flux d'actions du service.
+
+## v2.20 — faits OCR explicites du navire
+
+- Un parseur testé extrait les quantités `chargé/demandé`, la capacité, la récompense, la destination et le montant du bouton de collecte lorsqu'ils sont explicitement visibles. Toute valeur contradictoire, mal formée ou absente reste inconnue.
+- Ce parseur est un composant de lecture uniquement : il n'est pas encore relié au service d'accessibilité ni au pont de gestes. Il ne prouve pas qu'un paiement a été crédité et n'autorise aucun geste.
 
 ## Audit de la grille observée
 
