@@ -1,3 +1,13 @@
+# Peasant King Assistant — bêta installable (navigation Port uniquement)
+
+**Statut actuel :** l'APK de diagnostic peut être installée, mais l'envoi de marchandises et la gestion autonome des contrats ne fonctionnent pas encore. Le bouton « Auto Port (1 fois) » peut demander **un unique geste de navigation vers Port** lorsque le jeu est au premier plan, uniquement après une activation volontaire, trois observations OCR stables et le contrôle des coordonnées. Ce geste n'est pas validé sur un téléphone réel ; il n'implique pas qu'un chargement ou une livraison ont eu lieu. L'application ne nécessite pas d'application tierce de scripting, ni de root.
+
+**Téléchargement de la bêta :** ouvrir [Actions — Build Android APK](https://github.com/Xulink-android/peasent-king/actions/workflows/build-apk.yml), sélectionner le dernier run réussi, télécharger l'artefact `PeasantKingAssistant-debug-apk`, extraire `app-debug.apk`, puis installer normalement dans Android si le système le permet. L'activation du service d'accessibilité nécessite une décision explicite de l'utilisateur dans les paramètres de Samsung/Android. **Ne jamais contourner** les protections contre les « paramètres restreints ». L'APK reste signée avec une clé debug éphémère : une mise à jour future peut échouer et exiger une désinstallation, avec perte possible de réglages et nouvelles autorisations. Attendre une signature de diffusion stable pour une utilisation durable.
+
+**Fonctionnement :** l'OCR, les références d'icônes extraites de l'APK et les propositions d'expédition sont encore expérimentaux. Les propositions sont uniquement informatives et ne commandent **aucun envoi**. Le service s'arrête d'agir hors de Peasant to King, et le bouton « X Masquer » ne désactive pas l'accès au système : le retirer dans Paramètres → Accessibilité.
+
+---
+
 # Peasant King Assistant — v1.8 experimental
 
 Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
