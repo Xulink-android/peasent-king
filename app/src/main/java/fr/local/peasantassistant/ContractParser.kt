@@ -8,7 +8,7 @@ object ContractParser {
     data class Contract(val kingdom: String?, val amount: Int, val y: Int, val resource: String?)
     data class Result(val contracts: List<Contract>, val warnings: List<String>, val context: String)
 
-    private val send = Regex("""(?:ENVOYER|SEND)\\s*([0-9][0-9 .]*)""", RegexOption.IGNORE_CASE)
+    private val send = Regex("""(?:ENVOYER|SEND)\s*([0-9][0-9 .]*)""", RegexOption.IGNORE_CASE)
     private val resourceWords = linkedMapOf(
         "coal" to "coal", "charbon" to "coal",
         "grain" to "grain", "wheat" to "grain", "blé" to "grain",
