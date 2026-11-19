@@ -19,8 +19,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Configure Android SDK
-        uses: android-actions/setup-android@v3
+      # GitHub-hosted Ubuntu runners already have an Android SDK.
+      # Avoid setup-android's obsolete "tools" package install.
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
