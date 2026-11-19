@@ -8,7 +8,7 @@
 
 ---
 
-# Peasant King Assistant — v1.8 experimental
+# Peasant King Assistant — v2.17 bêta
 
 Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
 
@@ -77,3 +77,11 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 - Le contrat OCR transmet aussi la récompense au plan. La machine refuse de démarrer sans récompense connue et positive.
 - Un pont relie les décisions de cycle aux cibles OCR correspondantes et arrête le cycle si la cible visible est absente ou ambiguë. Il couvre l'ouverture du Port, le chargement, le départ, le déchargement et la collecte.
 - Le pont est validé par tests unitaires mais reste à brancher aux observations en direct du service. L'extraction automatique des stocks/réservations de la grille d'icônes est encore incomplète ; l'automatisation complète n'est donc pas activée.
+
+## Audit de la grille observée
+
+- La vidéo montre un entrepôt de 4 colonnes × 3 rangées. Les quantités sont affichées comme `111/200` sous les piles ; `200` est la capacité d'une pile, pas une réserve. Il ne faut donc pas les faire interpréter par `StockScreenParser` comme des lignes de stock nommées.
+- Le panneau filmé contient des piles de blé, pommes de terre, charbon, bois et une icône d'armes. Le classificateur embarqué ne connaît que six autres icônes extraites comme références d'illustration ; les empreintes d'illustration ne reconnaissent pas de manière fiable ces piles rendues dans l'entrepôt. Les armes ne sont pas modélisées dans le planificateur.
+- Les valeurs visibles ne prouvent pas non plus les réservations de cargaisons d'autres navires. `VerifiedStockGate` rejette donc cette grille et le cycle automatique reste désactivé. Ce blocage est volontaire : aucune cargaison ne doit être chargée à partir d'une simple quantité OCR sans ressource confirmée.
+- La vidéo confirme visuellement une expédition manuelle (chargement, départ, arrivée, déchargement, paiement), mais elle ne valide pas l'exécution de ces gestes par l'application. Il faut encore calibrer la reconnaissance des piles sur l'écran réel, raccorder le service et le bouton Démarrer/Arrêter, puis vérifier le cycle sur le Galaxy S24 Ultra.
+- Le workflow actuel exécute les tests unitaires et `assembleDebug`. L'APK est installable mais signée debug ; une signature stable pour les mises à jour n'est pas encore configurée. Aucun secret ni clé privée n'est présent dans le dépôt.
