@@ -10,8 +10,8 @@ android {
         applicationId = "fr.local.peasantassistant"
         minSdk = 32
         targetSdk = 34
-        versionCode = 32
-        versionName = "2.12-workflow-preview"
+        versionCode = 33
+        versionName = "2.13-game-screen-evidence"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
