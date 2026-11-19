@@ -38,3 +38,10 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 - Le rapport OCR et les découpes d'icônes restent dans le stockage privé de l'application. Copier un rapport dans le presse-papiers est une action volontaire de l'utilisateur.
 - Les APK de debug produits par GitHub Actions peuvent être signés avec des clés différentes d'une compilation à l'autre. **Ne pas désinstaller l'application en supposant qu'une mise à jour sera possible** : la distribution de mises à jour fiables nécessitera une clé de signature persistante stockée dans des secrets GitHub Actions, jamais dans le dépôt public.
 - Aucun geste automatique n'est envoyé au jeu dans cette version.
+
+## v2.1 — reconnaissance locale expérimentale
+
+- Les découpes candidates peuvent être étiquetées volontairement (charbon, blé, pommes de terre, bois, cacao, soie) dans la galerie.
+- Les empreintes visuelles sont enregistrées dans les préférences privées de l'application, sans réseau. Un bouton permet de supprimer les étiquettes.
+- Les nouveaux contrats visibles sont comparés aux exemples locaux avec un seuil strict et une marge d'ambiguïté. Les correspondances restent **diagnostiques** : elles ne sont pas encore injectées comme ressource certaine dans le planificateur, et n'autorisent aucun clic.
+- La position des découpes reste approximative. Ne pas attribuer une étiquette à une découpe montrant du texte, un fond ou plusieurs objets.
