@@ -30,16 +30,22 @@ class MainActivity : Activity() {
             textSize = 16f
             setPadding(0, 12, 0, 4)
         }
-        root.addView(label("Peasant King Assistant — v1.8 (simulation)"))
+        root.addView(label("Peasant King Assistant — v1.9 (simulation)"))
         root.addView(label(
             "Lecture OCR locale et simulation des contrats. " +
             "Aucun clic ni transfert automatique n'est effectué. " +
-            "Le bouton Fermer du panneau désactive le service."
+            "Le bouton Masquer ferme seulement le panneau, sans révoquer l'autorisation Android."
         ))
         root.addView(Button(this).apply {
             text = "Activer / désactiver le service d'accessibilité"
             setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
         })
+        root.addView(label(
+            "Pour éviter les autorisations répétées : laisse le service activé dans Android. " +
+            "Dans le jeu, X Masquer ferme le panneau. Pour le revoir, quitte le jeu " +
+            "puis reviens-y. Désactive le service depuis les paramètres Android " +
+            "si tu ne souhaites plus lui donner accès à l'écran."
+        ))
         val diagnostic = label("Dernier rapport : pas encore ouvert")
         root.addView(Button(this).apply {
             text = "Afficher le dernier rapport OCR enregistré"
