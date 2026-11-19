@@ -10,7 +10,7 @@ android {
         applicationId = "fr.local.peasantassistant"
         minSdk = 32
         targetSdk = 34
-        versionCode = 29
+        versionCode = 30
         versionName = "2.9-navigation"
     }
     compileOptions {
