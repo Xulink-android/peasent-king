@@ -37,14 +37,20 @@ object IconLibrary {
 
     fun recognize(context: Context, bitmap: Bitmap): String? {
         val refs = references(context)
-        if (refs.size < 2) return null
         val sample = IconSamples.perceptualHash(bitmap)
+        if (refs.size < 2) return BundledResourceFingerprints.candidate(sample)
         val scores = refs.map { (label, hashes) ->
             label to hashes.minOf { IconSamples.distance(sample, it) }
         }.sortedBy { it.second }
         val best = scores[0]
         val runnerUp = scores[1]
-        return best.first.takeIf { best.second <= 4 && runnerUp.second - best.second >= 5 }
+        val userCandidate = best.first.takeIf { best.second <= 4 && runnerUp.second - best.second >= 5 }
+        val bundledCandidate = BundledResourceFingerprints.candidate(sample)
+        // Conflicting reference sets are not a reliable identification.
+        return when {
+            userCandidate != null && bundledCandidate != null && userCandidate != bundledCandidate -> null
+            else -> userCandidate ?: bundledCandidate
+        }
     }
 
     fun clear(context: Context) {
