@@ -12,8 +12,7 @@ class ShipmentCycleOcrMapperTest {
         evidence: ShipmentScreenEvidenceParser.Evidence = ShipmentScreenEvidenceParser.Evidence(),
         stock: Int? = null,
         capacity: Int? = null,
-        carried: Boolean = false,
-        paymentCollected: Boolean = false
+        carried: Boolean = false
     ) = ShipmentCycleOcrMapper.map(ShipmentCycleOcrMapper.Input(
         screen = screen,
         plan = plan,
@@ -22,8 +21,7 @@ class ShipmentCycleOcrMapperTest {
         screenEvidence = evidence,
         stockAvailable = stock,
         shipCapacity = capacity,
-        continuityBound = carried,
-        paymentCollected = paymentCollected
+        continuityBound = carried
     ))
 
     @Test fun contractsNeedExactSignedContractAndSufficientStockAndCapacity() {
@@ -60,7 +58,7 @@ class ShipmentCycleOcrMapperTest {
             carried = true).unambiguous)
     }
 
-    @Test fun arrivalAndPaymentRequireDestinationAndExactQuantities() {
+    @Test fun arrivalAndSecuredRewardRequireDestinationAndExactQuantities() {
         val arrived = map(ShipmentCycleMachine.Screen.UNLOAD_CARGO,
             evidence = ShipmentScreenEvidenceParser.Evidence(remainingCargo = 89, kingdom = "Eastmere"), carried = true)
         assertTrue(arrived.arrivalConfirmed)
@@ -68,20 +66,20 @@ class ShipmentCycleOcrMapperTest {
         assertFalse(map(ShipmentCycleMachine.Screen.UNLOAD_CARGO,
             evidence = ShipmentScreenEvidenceParser.Evidence(remainingCargo = 88, kingdom = "Eastmere"), carried = true).unambiguous)
 
-        val collect = map(ShipmentCycleMachine.Screen.COLLECT_PAYMENT,
-            evidence = ShipmentScreenEvidenceParser.Evidence(kingdom = "Eastmere", paymentAmount = 8), carried = true)
-        assertTrue(collect.unambiguous)
-        assertFalse(map(ShipmentCycleMachine.Screen.COLLECT_PAYMENT,
-            evidence = ShipmentScreenEvidenceParser.Evidence(kingdom = "Gullhaven", paymentAmount = 8), carried = true).unambiguous)
-        assertFalse(map(ShipmentCycleMachine.Screen.COLLECT_PAYMENT,
-            evidence = ShipmentScreenEvidenceParser.Evidence(kingdom = "Eastmere", paymentAmount = 7), carried = true).unambiguous)
+        val returnReady = map(ShipmentCycleMachine.Screen.RETURN_READY,
+            evidence = ShipmentScreenEvidenceParser.Evidence(kingdom = "Eastmere", paymentSecuredAmount = 8), carried = true)
+        assertTrue(returnReady.unambiguous)
+        assertTrue(returnReady.paymentSecured)
+        assertFalse(map(ShipmentCycleMachine.Screen.RETURN_READY,
+            evidence = ShipmentScreenEvidenceParser.Evidence(kingdom = "Gullhaven", paymentSecuredAmount = 8), carried = true).unambiguous)
+        assertFalse(map(ShipmentCycleMachine.Screen.RETURN_READY,
+            evidence = ShipmentScreenEvidenceParser.Evidence(kingdom = "Eastmere", paymentSecuredAmount = 7), carried = true).unambiguous)
     }
 
-    @Test fun collectedPaymentRequiresPostGestureScreenEvidence() {
-        val proof = map(ShipmentCycleMachine.Screen.WORLD_MAP, carried = true, paymentCollected = true)
-        assertTrue(proof.paymentCollected)
-        assertTrue(proof.unambiguous)
-        assertFalse(map(ShipmentCycleMachine.Screen.COLLECT_PAYMENT, carried = true, paymentCollected = true).paymentCollected)
-        assertFalse(map(ShipmentCycleMachine.Screen.WORLD_MAP, carried = true).unambiguous)
+    @Test fun returnToReadyShipyardIsExplicitlyRecognized() {
+        val returned = map(ShipmentCycleMachine.Screen.SHIPYARD_READY, carried = true)
+        assertTrue(returned.unambiguous)
+        assertTrue(returned.shipReturnedReady)
+        assertFalse(map(ShipmentCycleMachine.Screen.SHIPYARD_READY, carried = false).unambiguous)
     }
 }

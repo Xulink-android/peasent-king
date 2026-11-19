@@ -1,10 +1,10 @@
 package fr.local.peasantassistant
 
-/** Fail-closed lifecycle for one shipment, including arrival, unloading and payment collection. */
+/** Fail-closed lifecycle for one shipment through unloading, secured payment and vessel return. */
 class ShipmentCycleMachine {
-    enum class Screen { CONTRACTS, WORLD_MAP, SHIPYARD, SHIP_LOADING, SHIP_READY, SHIP_SAILING, UNLOAD_CARGO, PAYMENT_IN_TRANSIT, COLLECT_PAYMENT, UNKNOWN }
-    enum class State { STOPPED, WAITING_FOR_CONTRACT, WAITING_FOR_LOAD, VERIFYING_LOAD, WAITING_FOR_READY, VERIFYING_DEPARTURE, WAITING_FOR_ARRIVAL, VERIFYING_UNLOAD, WAITING_FOR_PAYMENT, VERIFYING_PAYMENT, COMPLETED, BLOCKED }
-    enum class Action { OPEN_PORT, LOAD_CARGO, SEND_SHIP, UNLOAD_CARGO, COLLECT_PAYMENT }
+    enum class Screen { CONTRACTS, WORLD_MAP, SHIPYARD, SHIP_LOADING, SHIP_READY, SHIP_SAILING, UNLOAD_CARGO, PAYMENT_IN_TRANSIT, RETURN_READY, SHIPYARD_READY, UNKNOWN }
+    enum class State { STOPPED, WAITING_FOR_CONTRACT, WAITING_FOR_LOAD, VERIFYING_LOAD, WAITING_FOR_READY, VERIFYING_DEPARTURE, WAITING_FOR_ARRIVAL, VERIFYING_UNLOAD, WAITING_FOR_PAYMENT, VERIFYING_RETURN, COMPLETED, BLOCKED }
+    enum class Action { OPEN_PORT, LOAD_CARGO, SEND_SHIP, UNLOAD_CARGO, RETURN_SHIP }
 
     data class Shipment(val kingdom: String, val resource: String, val quantity: Int, val expectedReward: Int)
     data class Observation(
@@ -22,7 +22,8 @@ class ShipmentCycleMachine {
         val departureAccepted: Boolean = false,
         val arrivalConfirmed: Boolean = false,
         val cargoUnloaded: Boolean = false,
-        val paymentCollected: Boolean = false,
+        val paymentSecured: Boolean = false,
+        val shipReturnedReady: Boolean = false,
         val unambiguous: Boolean = false
     )
     data class Decision(val state: State, val action: Action? = null, val reason: String)
@@ -39,12 +40,14 @@ class ShipmentCycleMachine {
     private var previousFingerprint: String? = null
     private var stableCount = 0
     private var lastTimeMs = 0L
+    private var paymentConfirmedForShipment = false
 
     fun stop() {
         shipment = null; state = State.STOPPED; userEnabled = false; pending = null
         pendingLoadBaseline = null; pendingStockBaseline = null
         loadBaseline = null; loadStockBaseline = null
         previousFingerprint = null; stableCount = 0
+        paymentConfirmedForShipment = false
     }
 
     fun start(plan: Shipment, userApproved: Boolean, nowMs: Long): Decision {
@@ -67,7 +70,7 @@ class ShipmentCycleMachine {
         val fingerprint = listOf(value.screen, value.resource, value.quantity, value.kingdom,
             value.stockAvailable, value.shipCapacity, value.reward, value.contractVerified, value.contractAccepted,
             value.cargoLoaded, value.loadedQuantity, value.departureAccepted, value.arrivalConfirmed,
-            value.cargoUnloaded, value.paymentCollected).joinToString("|")
+            value.cargoUnloaded, value.paymentSecured, value.shipReturnedReady).joinToString("|")
         stableCount = if (fingerprint == previousFingerprint) stableCount + 1 else 1
         previousFingerprint = fingerprint
         if (stableCount < 3) return Decision(state, reason = "Stabilisation : $stableCount/3")
@@ -128,7 +131,7 @@ class ShipmentCycleMachine {
                 Action.UNLOAD_CARGO
             }
             State.VERIFYING_UNLOAD -> {
-                if (value.cargoUnloaded && value.screen in setOf(Screen.PAYMENT_IN_TRANSIT, Screen.COLLECT_PAYMENT)) {
+                if (value.cargoUnloaded && value.screen == Screen.PAYMENT_IN_TRANSIT) {
                     state = State.WAITING_FOR_PAYMENT
                     clearStability()
                     return Decision(state, reason = "Déchargement vérifié")
@@ -136,17 +139,18 @@ class ShipmentCycleMachine {
                 return Decision(state, reason = "Déchargement non confirmé ; ne pas répéter")
             }
             State.WAITING_FOR_PAYMENT -> {
-                if (value.screen != Screen.COLLECT_PAYMENT || value.kingdom != plan.kingdom ||
-                    value.reward != plan.expectedReward || value.paymentCollected)
-                    return Decision(state, reason = "Paiement non disponible ou non confirmé")
-                Action.COLLECT_PAYMENT
+                if (value.screen != Screen.RETURN_READY || value.kingdom != plan.kingdom ||
+                    value.reward != plan.expectedReward || !value.paymentSecured)
+                    return Decision(state, reason = "Paiement sécurisé et bouton de retour non confirmés")
+                paymentConfirmedForShipment = true
+                Action.RETURN_SHIP
             }
-            State.VERIFYING_PAYMENT -> {
-                if (value.paymentCollected && value.screen in setOf(Screen.WORLD_MAP, Screen.SHIPYARD, Screen.SHIP_READY)) {
+            State.VERIFYING_RETURN -> {
+                if (value.screen == Screen.SHIPYARD_READY && value.shipReturnedReady && paymentConfirmedForShipment) {
                     state = State.COMPLETED; userEnabled = false
-                    return Decision(state, reason = "Paiement collecté ; cycle terminé")
+                    return Decision(state, reason = "Retour du navire et paiement sécurisé confirmés")
                 }
-                return Decision(state, reason = "Collecte non confirmée ; ne pas répéter")
+                return Decision(state, reason = "Retour du navire non confirmé ; ne pas répéter le geste")
             }
             else -> return Decision(state, reason = "Cycle terminé ou bloqué")
         }
@@ -169,7 +173,7 @@ class ShipmentCycleMachine {
             }
             Action.SEND_SHIP -> State.VERIFYING_DEPARTURE
             Action.UNLOAD_CARGO -> State.VERIFYING_UNLOAD
-            Action.COLLECT_PAYMENT -> State.VERIFYING_PAYMENT
+            Action.RETURN_SHIP -> State.VERIFYING_RETURN
         }
         return Decision(state, reason = "Geste Android terminé ; la suite attend une preuve OCR")
     }

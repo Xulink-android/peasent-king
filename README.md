@@ -8,7 +8,7 @@
 
 ---
 
-# Peasant King Assistant — v2.24 bêta
+# Peasant King Assistant — v2.25 bêta
 
 Application Android indépendante pour Peasant to King 0.1.46. Le dépôt est **public** : aucun APK du jeu, sauvegarde ou image propriétaire n'est inclus.
 
@@ -111,6 +111,11 @@ Le service d'accessibilité est une permission sensible. L'application n'envoie 
 - Les piles de l'entrepôt peuvent alimenter le plan diagnostique seulement si toutes les icônes sont reconnues, qu'aucune ressource n'est dupliquée, qu'un navire est visible, que l'écran de chargement indique un navire sélectionné, que sa capacité est lisible et que trois captures concordent. La présence de « CONTRAT EN COURS » dans un écran de chantier naval ne le fait plus confondre avec l'écran des contrats.
 - Le planificateur ne choisit qu'un seul contrat explicitement signé à la fois. Si plusieurs contrats sont signés, si un badge est inconnu ou si une donnée manque, il ne propose rien.
 - Cette lecture reste indicative et non testée sur le Galaxy S24 Ultra. Les réservations de contrats tiers ne sont pas indépendamment visibles ; aucun geste d'expédition n'est encore lancé par le service.
+
+## v2.25 — preuves du retour du navire
+
+- La vidéo fournie montre que le jeu sécurise le paiement puis affiche « Prêt à retourner » et « Repartir » ; il n'y a pas de bouton « Récupérer » dans cette séquence. Le classificateur, le parseur OCR, le résolveur de cible et le moteur d'états couvrent maintenant cette séquence observée et exigent le montant exact avant le retour.
+- Le moteur n'est toujours pas raccordé au service d'accessibilité en direct. Aucun cycle complet ni enchaînement automatique n'est activé ou validé sur le Galaxy S24 Ultra ; l'APK de cette version reste un build de diagnostic.
 
 ## Audit de la grille observée
 

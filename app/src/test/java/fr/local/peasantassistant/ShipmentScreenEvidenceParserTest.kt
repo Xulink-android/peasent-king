@@ -33,6 +33,15 @@ class ShipmentScreenEvidenceParserTest {
         assertNull(evidence.loadedQuantity)
     }
 
+    @Test fun readsGameObservedSecuredPaymentLabel() {
+        val evidence = ShipmentScreenEvidenceParser.parse(listOf(
+            "Prêt à retourner", "Highvale Star à Eastmere", "8 Argent chargé", "Repartir"
+        ))
+        assertEquals("Eastmere", evidence.kingdom)
+        assertEquals(8, evidence.paymentSecuredAmount)
+        assertTrue(evidence.warnings.isEmpty())
+    }
+
     @Test fun conflictingProgressOrDestinationIsMarkedAmbiguous() {
         val evidence = ShipmentScreenEvidenceParser.parse(listOf(
             "ENVOYER 48/89", "ENVOYER 89/89",

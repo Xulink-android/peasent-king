@@ -10,7 +10,7 @@ import java.text.Normalizer
 object GameScreenClassifier {
     enum class Screen {
         WORLD_MAP, SHIPYARD, SHIP_LOADING, SHIP_READY_TO_SAIL, SHIP_SAILING,
-        UNLOAD_CARGO, PAYMENT_IN_TRANSIT, COLLECT_PAYMENT, MARKET, VILLAGE, UNKNOWN
+        UNLOAD_CARGO, PAYMENT_IN_TRANSIT, RETURN_READY, SHIPYARD_READY, COLLECT_PAYMENT, MARKET, VILLAGE, UNKNOWN
     }
 
     data class Result(val screen: Screen, val evidence: List<String>, val confidence: String)
@@ -30,6 +30,8 @@ object GameScreenClassifier {
             Screen.SHIP_LOADING to listOf("CHANTIER NAVAL", "CHARGEMENT DE MARCHANDISES")
         if (hasYard && has("CARGAISON PRETE")) matches +=
             Screen.SHIP_READY_TO_SAIL to listOf("CHANTIER NAVAL", "CARGAISON PRETE")
+        if (hasYard && has("PRET POUR UN CONTRAT")) matches +=
+            Screen.SHIPYARD_READY to listOf("CHANTIER NAVAL", "PRET POUR UN CONTRAT")
         if (hasYard && has("DECHARGEMENT AU PORT") && strings.any { it.startsWith("RECUPERER") }) matches +=
             Screen.COLLECT_PAYMENT to listOf("DECHARGEMENT AU PORT", "RECUPERER")
         if (hasYard && matches.isEmpty()) matches +=
@@ -38,6 +40,8 @@ object GameScreenClassifier {
             Screen.UNLOAD_CARGO to listOf("DECHARGEMENT DU NAVIRE", "ENTREPOT DU ROYAUME")
         if (has("PAIEMENT EN ROUTE") && has("ENTREPOT DU ROYAUME")) matches +=
             Screen.PAYMENT_IN_TRANSIT to listOf("PAIEMENT EN ROUTE", "ENTREPOT DU ROYAUME")
+        if (has("PAIEMENT SECURISE") && has("PRET A RETOURNER") && has("REPARTIR")) matches +=
+            Screen.RETURN_READY to listOf("PAIEMENT SECURISE", "PRET A RETOURNER", "REPARTIR")
         if (has("COLLECTER LE PAIEMENT") && has("ENTREPOT DU ROYAUME")) matches +=
             Screen.COLLECT_PAYMENT to listOf("COLLECTER LE PAIEMENT", "ENTREPOT DU ROYAUME")
         if (has("FLOTTE OCCUPEE") && has("CONTRAT")) matches +=

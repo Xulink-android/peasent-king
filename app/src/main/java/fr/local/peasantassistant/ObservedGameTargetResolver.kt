@@ -91,6 +91,27 @@ object ObservedGameTargetResolver {
         return targets.singleOrNull()?.let { Gesture(Point(it.centerX, it.centerY), Point(it.centerX, it.centerY), false) }
     }
 
+    /** Return only after the game's own return-ready screen shows the exact secured reward. */
+    fun returnShipTap(
+        screen: GameScreenClassifier.Screen,
+        boxes: List<Box>,
+        width: Int,
+        height: Int,
+        evidence: ShipmentEvidence
+    ): Gesture? {
+        val reward = evidence.expectedReward ?: return null
+        if (screen != GameScreenClassifier.Screen.RETURN_READY || evidence.kingdom.isBlank() || reward <= 0) return null
+        val destinationSuffix = " A ${norm(evidence.kingdom)}"
+        val destination = boxes.any {
+            val label = norm(it.text)
+            label.contains(" A ") && label.endsWith(destinationSuffix)
+        }
+        val secured = boxes.any { norm(it.text) == "$reward ARGENT CHARGE" }
+        if (!destination || !secured) return null
+        val targets = boxes.filter { norm(it.text) == "REPARTIR" && it.valid(width, height) }
+        return targets.singleOrNull()?.let { Gesture(Point(it.centerX, it.centerY), Point(it.centerX, it.centerY), false) }
+    }
+
     /** Drag confirmed cargo from the arriving ship into the specifically named kingdom warehouse. */
     fun unloadCargoDrag(
         screen: GameScreenClassifier.Screen,

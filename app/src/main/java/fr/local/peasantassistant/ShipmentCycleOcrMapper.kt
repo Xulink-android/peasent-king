@@ -10,8 +10,7 @@ object ShipmentCycleOcrMapper {
         val screenEvidence: ShipmentScreenEvidenceParser.Evidence = ShipmentScreenEvidenceParser.Evidence(),
         val stockAvailable: Int? = null,
         val shipCapacity: Int? = null,
-        val continuityBound: Boolean = false,
-        val paymentCollected: Boolean = false
+        val continuityBound: Boolean = false
     )
 
     fun map(input: Input): ShipmentCycleMachine.Observation {
@@ -27,7 +26,7 @@ object ShipmentCycleOcrMapper {
         val quantity = evidence.requestedQuantity ?: evidence.remainingCargo ?: contract?.amount
             ?: plan.quantity.takeIf { carried }
         val kingdom = evidence.kingdom ?: contract?.kingdom ?: plan.kingdom.takeIf { carried }
-        val reward = evidence.reward ?: evidence.paymentAmount ?: contract?.reward
+        val reward = evidence.reward ?: evidence.paymentAmount ?: evidence.paymentSecuredAmount ?: contract?.reward
             ?: plan.expectedReward.takeIf { carried }
         val progressMatches = evidence.requestedQuantity == plan.quantity
         val ready = input.screen == ShipmentCycleMachine.Screen.SHIP_READY &&
@@ -38,13 +37,9 @@ object ShipmentCycleOcrMapper {
             evidence.kingdom == plan.kingdom && evidence.remainingCargo == plan.quantity
         val unloaded = input.screen == ShipmentCycleMachine.Screen.PAYMENT_IN_TRANSIT && carried &&
             evidence.kingdom == plan.kingdom
-        val correctPayment = input.screen == ShipmentCycleMachine.Screen.COLLECT_PAYMENT && carried &&
-            evidence.kingdom == plan.kingdom && evidence.paymentAmount == plan.expectedReward
-        val paymentProof = input.paymentCollected && input.screen in setOf(
-            ShipmentCycleMachine.Screen.WORLD_MAP,
-            ShipmentCycleMachine.Screen.SHIPYARD,
-            ShipmentCycleMachine.Screen.SHIP_READY
-        )
+        val paymentSecured = input.screen == ShipmentCycleMachine.Screen.RETURN_READY && carried &&
+            evidence.kingdom == plan.kingdom && evidence.paymentSecuredAmount == plan.expectedReward
+        val returnedReady = input.screen == ShipmentCycleMachine.Screen.SHIPYARD_READY && carried
         val positiveEvidence = when (input.screen) {
             ShipmentCycleMachine.Screen.CONTRACTS -> contractMatches &&
                 input.observedResource == plan.resource && input.stockAvailable != null &&
@@ -59,8 +54,9 @@ object ShipmentCycleOcrMapper {
                 kingdom == plan.kingdom
             ShipmentCycleMachine.Screen.UNLOAD_CARGO -> arrived
             ShipmentCycleMachine.Screen.PAYMENT_IN_TRANSIT -> unloaded
-            ShipmentCycleMachine.Screen.COLLECT_PAYMENT -> correctPayment
-            ShipmentCycleMachine.Screen.WORLD_MAP -> paymentProof || (carried && departure)
+            ShipmentCycleMachine.Screen.RETURN_READY -> paymentSecured
+            ShipmentCycleMachine.Screen.SHIPYARD_READY -> returnedReady
+            ShipmentCycleMachine.Screen.WORLD_MAP -> carried && departure
             else -> false
         }
         return ShipmentCycleMachine.Observation(
@@ -78,7 +74,8 @@ object ShipmentCycleOcrMapper {
             departureAccepted = departure,
             arrivalConfirmed = arrived,
             cargoUnloaded = unloaded,
-            paymentCollected = paymentProof,
+            paymentSecured = paymentSecured,
+            shipReturnedReady = returnedReady,
             unambiguous = positiveEvidence && evidence.warnings.isEmpty()
         )
     }

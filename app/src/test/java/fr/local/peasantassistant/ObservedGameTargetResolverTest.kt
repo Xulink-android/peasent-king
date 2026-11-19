@@ -98,6 +98,23 @@ class ObservedGameTargetResolverTest {
             GameScreenClassifier.Screen.SHIPYARD, boxes, 1080, 2340, good))
     }
 
+    @Test fun returnRequiresExactSecuredPaymentDestinationAndUniqueObservedButton() {
+        val boxes = listOf(
+            ObservedGameTargetResolver.Box("Prêt à retourner", 300, 500, 780, 550),
+            ObservedGameTargetResolver.Box("Highvale Star à Eastmere", 300, 580, 780, 630),
+            ObservedGameTargetResolver.Box("8 Argent chargé", 400, 1660, 680, 1700),
+            ObservedGameTargetResolver.Box("Repartir", 425, 1350, 660, 1420)
+        )
+        assertNotNull(ObservedGameTargetResolver.returnShipTap(
+            GameScreenClassifier.Screen.RETURN_READY, boxes, 1080, 2340, good))
+        assertNull(ObservedGameTargetResolver.returnShipTap(
+            GameScreenClassifier.Screen.RETURN_READY, boxes, 1080, 2340, good.copy(expectedReward = 7)))
+        assertNull(ObservedGameTargetResolver.returnShipTap(
+            GameScreenClassifier.Screen.RETURN_READY, boxes + boxes.last(), 1080, 2340, good))
+        assertNull(ObservedGameTargetResolver.returnShipTap(
+            GameScreenClassifier.Screen.SHIPYARD, boxes, 1080, 2340, good))
+    }
+
     @Test fun unloadingUsesShipAndNamedWarehouseAnchorsAndRequiresResourceMatch() {
         val boxes = listOf(
             ObservedGameTargetResolver.Box("Highvale Star à Eastmere", 350, 630, 730, 675),

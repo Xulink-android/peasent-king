@@ -54,12 +54,12 @@ class ShipmentCycleMachineTest {
         assertEquals(ShipmentCycleMachine.State.WAITING_FOR_PAYMENT,
             stable(machine, base(ShipmentCycleMachine.Screen.PAYMENT_IN_TRANSIT).copy(cargoUnloaded = true), 3600).state)
 
-        assertEquals(ShipmentCycleMachine.Action.COLLECT_PAYMENT,
-            stable(machine, base(ShipmentCycleMachine.Screen.COLLECT_PAYMENT), 3900).action)
-        assertEquals(ShipmentCycleMachine.State.VERIFYING_PAYMENT,
-            machine.acknowledge(ShipmentCycleMachine.Action.COLLECT_PAYMENT, true).state)
+        assertEquals(ShipmentCycleMachine.Action.RETURN_SHIP,
+            stable(machine, base(ShipmentCycleMachine.Screen.RETURN_READY).copy(paymentSecured = true), 3900).action)
+        assertEquals(ShipmentCycleMachine.State.VERIFYING_RETURN,
+            machine.acknowledge(ShipmentCycleMachine.Action.RETURN_SHIP, true).state)
         assertEquals(ShipmentCycleMachine.State.COMPLETED,
-            stable(machine, base(ShipmentCycleMachine.Screen.WORLD_MAP).copy(paymentCollected = true), 4200).state)
+            stable(machine, base(ShipmentCycleMachine.Screen.SHIPYARD_READY).copy(shipReturnedReady = true), 4200).state)
         assertNull(machine.observe(base(ShipmentCycleMachine.Screen.WORLD_MAP), 4500).action)
     }
 
@@ -130,5 +130,32 @@ class ShipmentCycleMachineTest {
         machine.acknowledge(ShipmentCycleMachine.Action.LOAD_CARGO, true)
         assertEquals(ShipmentCycleMachine.State.BLOCKED, loadPart(machine, 0, 1800).state)
         assertNull(machine.observe(base(ShipmentCycleMachine.Screen.SHIP_LOADING).copy(loadedQuantity = 0), 2200).action)
+    }
+
+    @Test fun securedRewardRequiresReturnReadyAndReturnedShipBeforeCompletion() {
+        val machine = ShipmentCycleMachine()
+        machine.start(plan, true, 1000)
+        stable(machine, base(ShipmentCycleMachine.Screen.CONTRACTS).copy(contractVerified = true, contractAccepted = true), 1100)
+        machine.acknowledge(ShipmentCycleMachine.Action.OPEN_PORT, true)
+        loadPart(machine, 0, 1500)
+        machine.acknowledge(ShipmentCycleMachine.Action.LOAD_CARGO, true)
+        loadPart(machine, 89, 1800)
+        val ready = base(ShipmentCycleMachine.Screen.SHIP_READY).copy(cargoLoaded = true, loadedQuantity = 89)
+        stable(machine, ready, 2100)
+        machine.acknowledge(ShipmentCycleMachine.Action.SEND_SHIP, true)
+        stable(machine, base(ShipmentCycleMachine.Screen.SHIP_SAILING).copy(departureAccepted = true), 2400)
+        stable(machine, base(ShipmentCycleMachine.Screen.UNLOAD_CARGO).copy(arrivalConfirmed = true), 2700)
+        machine.acknowledge(ShipmentCycleMachine.Action.UNLOAD_CARGO, true)
+        stable(machine, base(ShipmentCycleMachine.Screen.PAYMENT_IN_TRANSIT).copy(cargoUnloaded = true), 3000)
+
+        val wrongPayment = base(ShipmentCycleMachine.Screen.RETURN_READY).copy(reward = 7, paymentSecured = true)
+        assertEquals(ShipmentCycleMachine.State.WAITING_FOR_PAYMENT, stable(machine, wrongPayment, 3300).state)
+        val paid = base(ShipmentCycleMachine.Screen.RETURN_READY).copy(paymentSecured = true)
+        assertEquals(ShipmentCycleMachine.Action.RETURN_SHIP, stable(machine, paid, 3600).action)
+        machine.acknowledge(ShipmentCycleMachine.Action.RETURN_SHIP, true)
+        assertEquals(ShipmentCycleMachine.State.VERIFYING_RETURN,
+            stable(machine, base(ShipmentCycleMachine.Screen.SHIPYARD_READY), 3900).state)
+        assertEquals(ShipmentCycleMachine.State.COMPLETED,
+            stable(machine, base(ShipmentCycleMachine.Screen.SHIPYARD_READY).copy(shipReturnedReady = true), 4200).state)
     }
 }

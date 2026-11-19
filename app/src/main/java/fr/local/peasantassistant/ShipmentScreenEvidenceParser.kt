@@ -15,6 +15,7 @@ object ShipmentScreenEvidenceParser {
         val reward: Int? = null,
         val kingdom: String? = null,
         val paymentAmount: Int? = null,
+        val paymentSecuredAmount: Int? = null,
         val warnings: List<String> = emptyList()
     )
 
@@ -81,6 +82,11 @@ object ShipmentScreenEvidenceParser {
                 .matchEntire(line)?.groupValues?.get(1)?.replace(" ", "")?.toIntOrNull()
                 ?.takeIf { it > 0 }
         }
+        val securedPaymentValues = normalized.mapNotNull { line ->
+            Regex("""^([0-9][0-9 ]*) ARGENT CHARGE$""")
+                .matchEntire(line)?.groupValues?.get(1)?.replace(" ", "")?.toIntOrNull()
+                ?.takeIf { it > 0 }
+        }
         val destinations = lines.mapNotNull { raw ->
             val line = raw.trim()
             Regex("""^NAVIGUEZ VERS\s+(.+)$""", RegexOption.IGNORE_CASE)
@@ -97,6 +103,7 @@ object ShipmentScreenEvidenceParser {
             reward = uniqueInt(rewards, "récompense", warnings),
             kingdom = uniqueText(destinations, "destination", warnings),
             paymentAmount = uniqueInt(payments, "paiement", warnings),
+            paymentSecuredAmount = uniqueInt(securedPaymentValues, "paiement sécurisé", warnings),
             warnings = warnings
         )
     }

@@ -26,6 +26,12 @@ class GameScreenClassifierTest {
         assertEquals(GameScreenClassifier.Screen.COLLECT_PAYMENT,
             GameScreenClassifier.classify(listOf("Collecter le paiement", "ENTREPÔT DU ROYAUME")).screen)
     }
+    @Test fun distinguishesSecuredPaymentReturnPromptFromShipyardReadyState() {
+        assertEquals(GameScreenClassifier.Screen.RETURN_READY,
+            GameScreenClassifier.classify(listOf("Paiement sécurisé", "Prêt à retourner", "Repartir")).screen)
+        assertEquals(GameScreenClassifier.Screen.SHIPYARD_READY,
+            GameScreenClassifier.classify(listOf("CHANTIER NAVAL", "Prêt pour un contrat", "ENTREPÔT")).screen)
+    }
     @Test fun rejectsAmbiguousOverlayScreens() {
         val ambiguous = listOf("CHANTIER NAVAL", "ENTREPÔT", "Déchargement du navire", "ENTREPÔT DU ROYAUME")
         assertEquals(GameScreenClassifier.Screen.UNKNOWN,

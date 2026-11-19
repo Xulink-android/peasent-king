@@ -86,8 +86,8 @@ class ShipmentCycleGestureBridge(private val machine: ShipmentCycleMachine) {
             ShipmentCycleMachine.Action.UNLOAD_CARGO ->
                 ObservedGameTargetResolver.unloadCargoDrag(frame.screen, frame.boxes, frame.width,
                     frame.height, frame.evidence)
-            ShipmentCycleMachine.Action.COLLECT_PAYMENT ->
-                ObservedGameTargetResolver.paymentTap(frame.screen, frame.boxes, frame.width,
+            ShipmentCycleMachine.Action.RETURN_SHIP ->
+                ObservedGameTargetResolver.returnShipTap(frame.screen, frame.boxes, frame.width,
                     frame.height, frame.evidence)
         }
     }
