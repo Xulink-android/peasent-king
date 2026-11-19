@@ -1,0 +1,206 @@
+package fr.local.peasantassistant
+
+import android.accessibilityservice.AccessibilityService
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.PixelFormat
+import android.os.Handler
+import android.os.Looper
+import android.view.Display
+import android.view.Gravity
+import android.view.View
+import android.view.WindowManager
+import android.view.accessibility.AccessibilityEvent
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import java.util.concurrent.Executors
+
+/**
+ * Read-only screen inspector. Never sends touches or edits game data.
+ * Accessibility screenshots require explicit user consent in Android settings.
+ */
+class GameAccessibilityService : AccessibilityService() {
+    companion object {
+        private const val GAME_PACKAGE = "com.peasanttoking.game"
+    }
+
+    private val ui = Handler(Looper.getMainLooper())
+    private val worker = Executors.newSingleThreadExecutor()
+    private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    private var overlay: View? = null
+    private var lastReport: String = ""
+    private var currentPackage: String? = null
+    private var capturing = false
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        showPanel()
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            currentPackage = event.packageName?.toString()
+        }
+    }
+
+    override fun onInterrupt() { /* No ongoing gestures to interrupt */ }
+
+    override fun onDestroy() {
+        overlay?.let {
+            try {
+                (getSystemService(WINDOW_SERVICE) as WindowManager).removeView(it)
+            } catch (_: Exception) { }
+        }
+        overlay = null
+        recognizer.close()
+        worker.shutdown()
+        super.onDestroy()
+    }
+
+    private fun isGameVisible(): Boolean {
+        val rootPackage = rootInActiveWindow?.packageName?.toString()
+        return rootPackage == GAME_PACKAGE ||
+            (rootPackage == null && currentPackage == GAME_PACKAGE)
+    }
+
+    private fun showPanel() {
+        if (overlay != null) return
+        val manager = getSystemService(WINDOW_SERVICE) as WindowManager
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(12, 8, 12, 8)
+            setBackgroundColor(0xE5222930.toInt())
+        }
+        val status = TextView(this).apply {
+            text = "Peasant King : prêt à analyser"
+            textSize = 12f
+            setTextColor(0xFFFFFFFF.toInt())
+            maxLines = 8
+        }
+        val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val analyze = Button(this).apply {
+            text = "Analyser"
+            setOnClickListener {
+                if (capturing) return@setOnClickListener
+                if (!isGameVisible()) {
+                    status.text = "Ouvre Peasant to King avant l'analyse."
+                    return@setOnClickListener
+                }
+                status.text = "Analyse OCR en cours…"
+                // Hide the overlay before taking a screenshot.
+                panel.visibility = View.INVISIBLE
+                ui.postDelayed({
+                    inspect { message ->
+                        panel.visibility = View.VISIBLE
+                        status.text = message.take(3000)
+                    }
+                }, 350)
+            }
+        }
+        val copy = Button(this).apply {
+            text = "Copier rapport"
+            setOnClickListener {
+                if (lastReport.isBlank()) {
+                    status.text = "Analyse d'abord un écran."
+                } else {
+                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Peasant King OCR", lastReport))
+                    status.text = "Rapport OCR copié. Colle-le dans ChatGPT."
+                }
+            }
+        }
+        buttons.addView(analyze)
+        buttons.addView(copy)
+        panel.addView(buttons)
+        panel.addView(ScrollView(this).apply {
+            addView(status)
+            layoutParams = LinearLayout.LayoutParams(630, 220)
+        })
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = 6
+            y = 100
+        }
+        try {
+            manager.addView(panel, params)
+            overlay = panel
+        } catch (_: Exception) {
+            overlay = null
+        }
+    }
+
+    private fun inspect(finish: (String) -> Unit) {
+        if (capturing) {
+            finish("Une analyse est déjà en cours.")
+            return
+        }
+        capturing = true
+        takeScreenshot(Display.DEFAULT_DISPLAY, worker, object : TakeScreenshotCallback {
+            override fun onFailure(errorCode: Int) {
+                ui.post {
+                    capturing = false
+                    finish("Capture impossible (code $errorCode).")
+                }
+            }
+
+            override fun onSuccess(result: ScreenshotResult) {
+                val wrapped = Bitmap.wrapHardwareBuffer(result.hardwareBuffer, result.colorSpace)
+                val bitmap = wrapped?.copy(Bitmap.Config.ARGB_8888, false)
+                result.hardwareBuffer.close()
+                if (bitmap == null) {
+                    ui.post {
+                        capturing = false
+                        finish("Capture indisponible.")
+                    }
+                    return
+                }
+                val width = bitmap.width
+                val height = bitmap.height
+                recognizer.process(InputImage.fromBitmap(bitmap, 0))
+                    .addOnSuccessListener { detected ->
+                        val lines = detected.textBlocks.flatMap { it.lines }
+                            .mapNotNull { line ->
+                                val rect = line.boundingBox ?: return@mapNotNull null
+                                val text = line.text.trim().replace("\n", " ")
+                                if (text.isBlank()) return@mapNotNull null
+                                val x = (100.0 * rect.exactCenterX() / width).toInt()
+                                val y = (100.0 * rect.exactCenterY() / height).toInt()
+                                "$x%,$y% : $text"
+                            }
+                        lastReport = buildString {
+                            appendLine("Peasant King — diagnostic OCR en lecture seule")
+                            appendLine("Écran : $width x $height")
+                            appendLine("Textes détectés : ${lines.size}")
+                            lines.forEach { appendLine(it) }
+                            appendLine("La lecture des icônes et des contrats invisibles n'est pas prise en charge.")
+                        }
+                        ui.post {
+                            capturing = false
+                            finish("Analyse : ${lines.size} textes détectés. Appuie sur Copier rapport.")
+                        }
+                    }
+                    .addOnFailureListener { error ->
+                        ui.post {
+                            capturing = false
+                            finish("Échec OCR : ${error.message}")
+                        }
+                    }
+                    .addOnCompleteListener { bitmap.recycle() }
+            }
+        })
+    }
+}
