@@ -35,7 +35,8 @@ class MainActivity : Activity() {
         root.addView(label("Peasant King Assistant — bêta navigation"))
         root.addView(label(
             "Lecture OCR locale et simulation des contrats. " +
-            "Aucun clic ni transfert automatique n'est effectué. " +
+            "Un geste facultatif Auto Port (1 fois) est disponible après activation et vérifications. " +
+            "Aucune expédition ni aucun transfert de ressources ne sont automatisés. " +
             "Le bouton Masquer ferme seulement le panneau, sans révoquer l'autorisation Android."
         ))
         root.addView(Button(this).apply {
